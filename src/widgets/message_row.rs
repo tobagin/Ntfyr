@@ -53,7 +53,11 @@ impl MessageRow {
         let time = gtk::Label::builder()
             .label(
                 &chrono::DateTime::from_timestamp(msg.time as i64, 0)
-                    .map(|time| time.format("%Y-%m-%d %H:%M:%S").to_string())
+                    .map(|time| {
+                        time.with_timezone(&chrono::Local)
+                            .format("%Y-%m-%d %H:%M:%S")
+                            .to_string()
+                    })
                     .unwrap_or_default(),
             )
             .xalign(0.0)
@@ -148,7 +152,7 @@ impl MessageRow {
         }
     }
     fn fetch_image_bytes(url: &str) -> anyhow::Result<Vec<u8>> {
-        let path = glib::user_cache_dir().join("com.ranfdev.Notify").join(&url);
+        let path = glib::user_cache_dir().join("io.github.tobagin.Ntfyr").join(&url);
         let bytes = if path.exists() {
             std::fs::read(&path)?
         } else {
