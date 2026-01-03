@@ -3,7 +3,7 @@ use glib::subclass::prelude::*;
 use gtk::prelude::*;
 use gtk::{self, glib};
 
-use crate::widgets::NotifyWindow;
+use crate::widgets::NtfyrWindow;
 
 pub type Error = anyhow::Error;
 
@@ -17,9 +17,9 @@ impl<W: IsA<gtk::Widget>> ErrorBoundaryProvider for W {
             .ancestor(adw::ToastOverlay::static_type())
             .and_downcast();
         let win: Option<adw::ToastOverlay> = self
-            .ancestor(NotifyWindow::static_type())
+            .ancestor(NtfyrWindow::static_type())
             .and_downcast()
-            .map(|win: NotifyWindow| win.imp().toast_overlay.clone());
+            .map(|win: NtfyrWindow| win.imp().toast_overlay.clone());
         let toast_overlay = direct_ancestor.or(win);
         ErrorBoundary {
             source: self.clone().into(),

@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Notify
+Name=Ntfyr
 Comment=ntfy.sh client application to receive everyday's notifications
 Type=Application
-Exec=notify
+Exec=ntfyr
 Terminal=false
 Categories=GNOME;GTK;Network;Utility;
 # Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!

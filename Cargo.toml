@@ -1,8 +1,9 @@
 [package]
-name = "notify"
-version = "0.1.6"
+name = "ntfyr"
+version = "0.1.0"
 authors = ["ranfdev <ranfdev@gmail.com>"]
 edition = "2024"
+repository = "https://github.com/tobagin/Ntfyr"
 
 [profile.release]
 lto = "thin"
@@ -34,3 +35,4 @@ ashpd = { version = "0.12", features = ["gtk4"] }
 gdk-pixbuf = "0.21"
 async-channel = "2.5.0"
 relm4-macros = { version = "0.10.1", features = [], default-features = false }
+ksni = "0.3.3"

@@ -12,6 +12,8 @@ use tracing::{debug, error, info, warn};
 
 use crate::config::{APP_ID, PKGDATADIR, PROFILE, VERSION};
 use crate::widgets::*;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use crate::tray;
 
 mod imp {
     use std::cell::RefCell;
@@ -26,6 +28,9 @@ mod imp {
         pub window: RefCell<WeakRef<NtfyrWindow>>,
         pub hold_guard: OnceCell<gio::ApplicationHoldGuard>,
         pub ntfy: OnceCell<NtfyHandle>,
+        pub tray: OnceCell<ksni::Handle<tray::NtfyrTray>>,
+        pub tray_visible: Arc<AtomicBool>,
+        pub tray_has_unread: Arc<AtomicBool>,
     }
 
     #[glib::object_subclass]
@@ -51,6 +56,15 @@ mod imp {
 
             // Set icons for shell
             gtk::Window::set_default_icon_name(APP_ID);
+
+            // Spawn tray
+            let visible = app.imp().tray_visible.clone();
+            let has_unread = app.imp().tray_has_unread.clone();
+            if let Ok(handle) = crate::tray::spawn_tray(visible, has_unread) {
+                app.imp().tray.set(handle).ok();
+            } else {
+                 warn!("Failed to spawn tray icon");
+            }
 
             app.setup_css();
             app.setup_gactions();
@@ -199,12 +213,42 @@ impl NtfyrApplication {
                 app.handle_message_action(action);
             })
             .build();
+        let action_shortcuts = gio::ActionEntry::builder("shortcuts")
+            .activate(|app: &Self, _, _| {
+                app.show_shortcuts();
+            })
+            .build();
+
         self.add_action_entries([
             action_quit,
             action_about,
+            action_shortcuts,
             action_preferences,
             message_action,
         ]);
+        
+        let action_toggle_window = gio::ActionEntry::builder("toggle-window")
+            .activate(move |app: &Self, _, _| {
+                if let Some(win) = app.imp().window.borrow().upgrade() {
+                    // If visible, close it (hide). If not visible, present it.
+                    // Note: close() might destroy it if not careful but since we have hold_guard, 
+                    // closing the window just hides it effectively until we rebuild/present it.
+                    // Actually, GtkWindow close() emits "close-request".
+                    // If we want to hide it without destroying, we should just set_visible(false)?
+                    // But standard behavior is closing destroys the widget.
+                    // NtfyrApplication::ensure_window_present() calls build_window() which creates new one.
+                    // So destroying is fine as long as app keeps running.
+                    if win.is_visible() {
+                         win.close();
+                    } else {
+                         win.present();
+                    }
+                } else {
+                    app.ensure_window_present();
+                }
+            })
+            .build();
+        self.add_action_entries([action_toggle_window]);
     }
 
     fn handle_message_action(&self, action: models::Action) {
@@ -265,6 +309,7 @@ impl NtfyrApplication {
     fn setup_accels(&self) {
         self.set_accels_for_action("app.quit", &["<Control>q"]);
         self.set_accels_for_action("window.close", &["<Control>w"]);
+        self.set_accels_for_action("app.shortcuts", &["<Control>question"]);
     }
 
     fn setup_css(&self) {
@@ -284,6 +329,15 @@ impl NtfyrApplication {
             "/io/github/tobagin/Ntfyr/io.github.tobagin.Ntfyr.metainfo.xml",
             None,
         );
+        if let Some(w) = self.imp().window.borrow().upgrade() {
+            dialog.present(Some(&w));
+        }
+    }
+
+    fn show_shortcuts(&self) {
+        let builder = gtk::Builder::from_resource("/io/github/tobagin/Ntfyr/gtk/help-overlay.ui");
+        let dialog: adw::ShortcutsDialog = builder.object("help_overlay")
+            .expect("shortcuts.ui MUST have help_overlay object");
         if let Some(w) = self.imp().window.borrow().upgrade() {
             dialog.present(Some(&w));
         }
@@ -429,6 +483,7 @@ impl NtfyrApplication {
                 }
 
                 app.send_notification(None, &gio_notif);
+                app.set_unread(true);
             }
         });
         struct Proxies {
@@ -471,7 +526,37 @@ impl NtfyrApplication {
         let ntfy = self.imp().ntfy.get().unwrap();
 
         let window = NtfyrWindow::new(self, ntfy.clone());
+        
+        let visible = self.imp().tray_visible.clone();
+        let app = self.clone();
+        window.connect_notify_local(Some("visible"), move |win, _| {
+            let is_visible = win.is_visible();
+            visible.store(is_visible, Ordering::Relaxed);
+            if is_visible {
+                app.set_unread(false);
+            }
+            app.update_tray();
+        });
+        // Sync initial state
+        self.imp().tray_visible.store(window.is_visible(), Ordering::Relaxed);
+        
         *self.imp().window.borrow_mut() = window.downgrade();
+    }
+    fn set_unread(&self, unread: bool) {
+        let imp = self.imp();
+        if imp.tray_has_unread.load(Ordering::Relaxed) != unread {
+            imp.tray_has_unread.store(unread, Ordering::Relaxed);
+            self.update_tray();
+        }
+    }
+
+    fn update_tray(&self) {
+        if let Some(handle) = self.imp().tray.get() {
+            let handle = handle.clone();
+            crate::async_utils::RUNTIME.spawn(async move {
+                let _ = handle.update(|_| {}).await;
+            });
+        }
     }
 }
 

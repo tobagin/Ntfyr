@@ -5,7 +5,7 @@
   <metadata_license>CC0</metadata_license>
   <!-- Insert your license of choice here -->
   <project_license>GPL-3.0-or-later</project_license>
-  <name>Notify</name>
+  <name>Ntfyr</name>
   <summary>Receive notifications from ntfy.sh</summary>
   <description>
     <p>A desktop client for ntfy.</p>
@@ -35,57 +35,26 @@
       <caption>Main window, subscription view</caption>
     </screenshot>
   </screenshots>
-  <url type="homepage">https://github.com/ranfdev/Notify</url>
-  <url type="bugtracker">https://github.com/ranfdev/Notify/issues</url>
-  <url type="donation">https://github.com/sponsors/ranfdev</url>
+  <url type="homepage">https://github.com/tobagin/Ntfyr</url>
+  <url type="bugtracker">https://github.com/tobagin/Ntfyr/issues</url>
+  <url type="donation">https://github.com/sponsors/tobagin</url>
 
   <content_rating type="oars-1.0" />
   <releases>
-    <release version="0.1.6" date="2024-11-24">
-      <description>
-        <ul>
-          <li>Fixed issue handling custom local certificates with https</li>
-          <li>Updated GNOME sdk</li>
-        </ul>
-      </description>
+    <release version="0.1.0" date="2026-01-03">
+        <description>
+            <p>Initial release of Ntfyr, a native client for ntfy.sh.</p>
+            <ul>
+                <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
+                <li>View past notifications</li>
+                <li>Automatic background execution and autostart</li>
+                <li>Support for attachments and action buttons</li>
+                <li>Advanced message dialog for sending complex notifications</li>
+                <li>Secure secret storage for private topics</li>
+                <li>Support for basic authentication and custom certificates</li>
+            </ul>
+        </description>
     </release>
-    <release version="0.1.5" date="2024-01-03">
-      <description>
-        <ul>
-          <li>Fixed about window crashing</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.1.4" date="2023-11-27">
-      <description>
-        <ul>
-          <li>Various bugfixes</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.1.3" date="2023-11-16">
-      <description>
-        <ul>
-          <li>Support for basic authentication with custom accounts</li>
-          <li>Custom server field is now prefilled when appropriate</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.1.2" date="2023-11-07">
-      <description>
-        <ul>
-          <li>Introduced dialog to write advanced messages</li>
-          <li>Automatic download of attached images</li>
-          <li>Introduced support for action buttons in the notifications</li>
-          <li>Improved performance of the message list layout</li>
-          <li>Improved design for status chips</li>
-          <li>Improved design for the message bar</li>
-          <li>Various bug fixes</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.1.1" date="2023-10-24" />
-    <release version="0.1.0" date="2023-10-13" />
   </releases>
   <developer_name>ranfdev</developer_name>
   <update_contact>ranfdev@gmail.com</update_contact>

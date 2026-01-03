@@ -1,0 +1,31 @@
+id: io.github.tobagin.Ntfyr
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: ntfyr
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --own-name=io.github.tobagin.Ntfyr
+  - --talk-name=org.freedesktop.Notifications
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  build-args:
+    - --share=network
+  env:
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  test-args:
+    - --socket=x11
+    - --share=network
+modules:
+  - name: ntfyr
+    buildsystem: meson
+    run-tests: true
+    sources:
+      - type: dir
+        path: ../

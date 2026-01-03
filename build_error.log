@@ -1,0 +1,240 @@
+warning: unused import: `std::cell::RefCell`
+ --> ntfy-daemon/src/credentials.rs:1:5
+  |
+1 | use std::cell::RefCell;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::rc::Rc`
+ --> ntfy-daemon/src/credentials.rs:3:5
+  |
+3 | use std::rc::Rc;
+  |     ^^^^^^^^^^^
+
+warning: unused imports: `Value` and `json`
+ --> ntfy-daemon/src/http_client.rs:4:18
+  |
+4 | use serde_json::{json, Value};
+  |                  ^^^^  ^^^^^
+
+warning: unused import: `crate::models`
+  --> ntfy-daemon/src/http_client.rs:11:5
+   |
+11 | use crate::models;
+   |     ^^^^^^^^^^^^^
+
+warning: unused import: `self`
+ --> ntfy-daemon/src/listener.rs:7:19
+  |
+7 | use tokio::task::{self, spawn_local, LocalSet};
+  |                   ^^^^
+
+warning: unused import: `Span`
+  --> ntfy-daemon/src/listener.rs:13:53
+   |
+13 | use tracing::{debug, error, info, warn, Instrument, Span};
+   |                                                     ^^^^
+
+warning: unused imports: `cell::RefCell` and `rc::Rc`
+ --> ntfy-daemon/src/message_repo/mod.rs:2:11
+  |
+2 | use std::{cell::RefCell, rc::Rc};
+  |           ^^^^^^^^^^^^^  ^^^^^^
+
+warning: unused import: `crate::models::NullNetworkMonitor`
+ --> ntfy-daemon/src/ntfy.rs:2:5
+  |
+2 | use crate::models::NullNetworkMonitor;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::models::NullNotifier`
+ --> ntfy-daemon/src/ntfy.rs:3:5
+  |
+3 | use crate::models::NullNotifier;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `broadcast` and `spawn_local`
+  --> ntfy-daemon/src/ntfy.rs:10:12
+   |
+10 |     sync::{broadcast, mpsc, oneshot, RwLock},
+   |            ^^^^^^^^^
+11 |     task::{spawn_local, LocalSet},
+   |            ^^^^^^^^^^^
+
+warning: unused imports: `ListenerActor` and `ListenerCommand`
+  --> ntfy-daemon/src/ntfy.rs:19:5
+   |
+19 |     ListenerActor, ListenerCommand, ListenerConfig, ListenerHandle,...
+   |     ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+
+warning: unused import: `ResponseBuilderExt`
+ --> ntfy-daemon/src/http_client.rs:3:77
+  |
+3 | ...uestBuilder, Response, ResponseBuilderExt};
+  |                           ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Context`
+ --> ntfy-daemon/src/ntfy.rs:4:22
+  |
+4 | use anyhow::{anyhow, Context};
+  |                      ^^^^^^^
+
+warning: unused variable: `n`
+   --> ntfy-daemon/src/models.rs:382:20
+    |
+382 |     fn send(&self, n: Notification) -> anyhow::Result<()> {
+    |                    ^ help: if this is intentional, prefix it with an underscore: `_n`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated function `new` is never used
+  --> ntfy-daemon/src/credentials.rs:86:12
+   |
+85 | impl NullableKeyring {
+   | -------------------- associated function in this implementation
+86 |     pub fn new(search_response: Vec<KeyringItem>) -> Self {
+   |            ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `url`, `method`, `headers`, and `body` are never read
+  --> ntfy-daemon/src/http_client.rs:17:9
+   |
+16 | pub struct RequestInfo {
+   |            ----------- fields in this struct
+17 |     pub url: String,
+   |         ^^^
+18 |     pub method: String,
+   |         ^^^^^^
+19 |     pub headers: HeaderMap,
+   |         ^^^^^^^
+20 |     pub body: Option<Vec<u8>>,
+   |         ^^^^
+   |
+   = note: `RequestInfo` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: associated items `new_nullable` and `request_tracker` are never used
+  --> ntfy-daemon/src/http_client.rs:69:12
+   |
+62 | impl HttpClient {
+   | --------------- associated items in this implementation
+...
+69 |     pub fn new_nullable(client: NullableClient) -> Self {
+   |            ^^^^^^^^^^^^
+...
+76 |     pub async fn request_tracker(&self) -> OutputTrackerAsync<Reque...
+   |                  ^^^^^^^^^^^^^^^
+
+warning: struct `NullableClient` is never constructed
+  --> ntfy-daemon/src/http_client.rs:99:12
+   |
+99 | pub struct NullableClient {
+   |            ^^^^^^^^^^^^^^
+
+warning: struct `NullableClientBuilder` is never constructed
+   --> ntfy-daemon/src/http_client.rs:106:12
+    |
+106 | pub struct NullableClientBuilder {
+    |            ^^^^^^^^^^^^^^^^^^^^^
+
+warning: multiple associated items are never used
+   --> ntfy-daemon/src/http_client.rs:112:12
+    |
+111 | impl NullableClientBuilder {
+    | -------------------------- associated items in this implementation
+112 |     pub fn new() -> Self {
+    |            ^^^
+...
+117 |     pub fn response(mut self, url: impl Into<String>, response: Re...
+    |            ^^^^^^^^
+...
+126 |     pub fn responses(mut self, url: impl Into<String>, responses: ...
+    |            ^^^^^^^^^
+...
+132 |     pub fn default_response(
+    |            ^^^^^^^^^^^^^^^^
+...
+141 |     pub fn json_response(
+    |            ^^^^^^^^^^^^^
+...
+156 |     pub fn text_response(
+    |            ^^^^^^^^^^^^^
+...
+170 |     pub fn build(self) -> NullableClient {
+    |            ^^^^^
+
+warning: associated function `builder` is never used
+   --> ntfy-daemon/src/http_client.rs:184:12
+    |
+183 | impl NullableClient {
+    | ------------------- associated function in this implementation
+184 |     pub fn builder() -> NullableClientBuilder {
+    |            ^^^^^^^
+
+warning: struct `OutputTracker` is never constructed
+ --> ntfy-daemon/src/output_tracker.rs:6:12
+  |
+6 | pub struct OutputTracker<T> {
+  |            ^^^^^^^^^^^^^
+
+warning: methods `enable`, `push`, and `items` are never used
+  --> ntfy-daemon/src/output_tracker.rs:19:12
+   |
+18 | impl<T: Clone> OutputTracker<T> {
+   | ------------------------------- methods in this implementation
+19 |     pub fn enable(&self) {
+   |            ^^^^^^
+...
+25 |     pub fn push(&self, item: T) {
+   |            ^^^^
+...
+30 |     pub fn items(&self) -> Vec<T> {
+   |            ^^^^^
+
+warning: methods `enable` and `items` are never used
+  --> ntfy-daemon/src/output_tracker.rs:53:18
+   |
+52 | impl<T: Clone> OutputTrackerAsync<T> {
+   | ------------------------------------ methods in this implementation
+53 |     pub async fn enable(&self) {
+   |                  ^^^^^^
+...
+64 |     pub async fn items(&self) -> Vec<T> {
+   |                  ^^^^^
+
+warning: unused `Result` that must be used
+   --> ntfy-daemon/src/ntfy.rs:374:9
+    |
+374 |         handle_tx.send(handle.clone());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+    = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+374 |         let _ = handle_tx.send(handle.clone());
+    |         +++++++
+
+warning: `ntfy-daemon` (lib) generated 25 warnings (run `cargo fix --lib -p ntfy-daemon` to apply 12 suggestions)
+    Checking ntfyr v0.1.0 (/var/home/tobagin/Projects/Notify)
+error[E0583]: file not found for module `config`
+ --> src/main.rs:3:1
+  |
+3 | mod config;
+  | ^^^^^^^^^^^
+  |
+  = help: to create the module `config`, create file "src/config.rs" or "src/config/mod.rs"
+  = note: if there is a `mod config` elsewhere in the crate already, import it with `use crate::...` instead
+
+warning: unused import: `anyhow::Context`
+  --> src/application.rs:15:5
+   |
+15 | use anyhow::Context;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0583`.
+warning: `ntfyr` (bin "ntfyr") generated 1 warning
+error: could not compile `ntfyr` (bin "ntfyr") due to 1 previous error; 1 warning emitted

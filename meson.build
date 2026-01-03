@@ -1,7 +1,7 @@
 project(
-  'notify',
+  'ntfyr',
   'rust',
-  version: '0.1.6',
+  version: '0.1.0',
   meson_version: '>= 0.59',
   # license: 'MIT',
 )
@@ -9,7 +9,7 @@ project(
 i18n = import('i18n')
 gnome = import('gnome')
 
-base_id = 'com.ranfdev.Notify'
+base_id = 'io.github.tobagin.Ntfyr'
 
 dependency('glib-2.0', version: '>= 2.66')
 dependency('gio-2.0', version: '>= 2.66')

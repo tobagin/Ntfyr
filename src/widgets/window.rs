@@ -226,6 +226,7 @@ impl NtfyrWindow {
                     ..models::OutgoingMessage::default()
                 })
                 .await?;
+            entry.set_text("");
             Ok(())
         });
     }

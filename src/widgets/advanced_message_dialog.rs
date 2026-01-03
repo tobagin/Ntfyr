@@ -176,16 +176,18 @@ impl AdvancedMessageDialog {
                                 set_label: "Send",
                                 connect_clicked[this, toast_overlay, text_view] => move |_| {
                                     let thisc = this.clone();
-                                    let text_view = text_view.clone();
+                                    let text_viewc = text_view.clone();
                                     let f = async move {
-                                        let buffer = text_view.buffer();
+                                        let buffer = text_viewc.buffer();
                                         let msg = serde_json::from_str(&buffer.text(
                                             &mut buffer.start_iter(),
                                             &mut buffer.end_iter(),
                                             true,
                                         ))?;
                                         thisc.imp().subscription.get().unwrap()
-                                            .publish_msg(msg).await
+                                            .publish_msg(msg).await?;
+                                        thisc.close();
+                                        Ok(())
                                     };
                                     toast_overlay.error_boundary().spawn(f);
                                 }
