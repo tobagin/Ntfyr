@@ -108,6 +108,7 @@ template $NtfyrWindow : Adw.ApplicationWindow {
             ScrolledWindow list_view {
               propagate-natural-height: true;
               ListBox subscription_list {
+                activate-on-single-click: true;
                 styles [
                   "navigation-sidebar"
                 ]

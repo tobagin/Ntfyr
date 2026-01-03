@@ -281,6 +281,9 @@ impl NtfyrWindow {
             let i = imp.subscription_list_model.n_items() - 1;
             let row = imp.subscription_list.row_at_index(i as i32);
             imp.subscription_list.select_row(row.as_ref());
+            if let Some(row) = row {
+                row.activate();
+            }
             Ok(())
         });
     }
@@ -322,7 +325,7 @@ impl NtfyrWindow {
             });
 
         let this = self.clone();
-        imp.subscription_list.connect_row_selected(move |_, _row| {
+        imp.subscription_list.connect_row_activated(move |_, _row| {
             this.selected_subscription_changed(this.selected_subscription().as_ref());
         });
 
