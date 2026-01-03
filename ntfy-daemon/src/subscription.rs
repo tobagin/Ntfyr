@@ -163,6 +163,7 @@ impl SubscriptionActor {
                             debug!(server=?new_model.server, topic=?new_model.topic, "updating subscription info");
                             new_model.server = self.model.server.clone();
                             new_model.topic = self.model.topic.clone();
+                            new_model.read_until = self.model.read_until;
                             let res = self.env.db.update_subscription(new_model.clone());
                             if let Ok(_) = res {
                                 self.model = new_model;

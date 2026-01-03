@@ -111,8 +111,14 @@ impl NtfyActor {
         server: String,
         topic: String,
     ) -> Result<SubscriptionHandle, anyhow::Error> {
+        let read_until = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
         let subscription = models::Subscription::builder(topic.clone())
             .server(server.clone())
+            .read_until(read_until)
             .build()?;
 
         let mut db = self.env.db.clone();

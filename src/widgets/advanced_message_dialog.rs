@@ -156,6 +156,14 @@ impl AdvancedMessageDialog {
                                     }
                                 },
                                 append = &gtk::Button {
+                                    add_css_class: "pill",
+                                    add_css_class: "small",
+                                    set_label: "Markdown",
+                                    connect_clicked[text_view] => move |_| {
+                                        text_view.buffer().insert_at_cursor(r#""markdown": true"#)
+                                    }
+                                },
+                                append = &gtk::Button {
                                     add_css_class: "circular",
                                     add_css_class: "small",
                                     set_label: "?",

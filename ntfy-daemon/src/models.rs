@@ -57,7 +57,10 @@ pub struct ReceivedMessage {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<Action>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub markdown: Option<bool>,
 }
+
 
 impl ReceivedMessage {
     fn extend_with_emojis(&self, text: &mut String) {
@@ -136,6 +139,8 @@ pub struct OutgoingMessage {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<Action>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub markdown: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -225,6 +230,7 @@ pub struct SubscriptionBuilder {
     reserved: bool,
     symbolic_icon: Option<String>,
     display_name: String,
+    read_until: u64,
 }
 
 impl SubscriptionBuilder {
@@ -237,6 +243,7 @@ impl SubscriptionBuilder {
             reserved: false,
             symbolic_icon: None,
             display_name: String::new(),
+            read_until: 0,
         }
     }
 
@@ -270,6 +277,11 @@ impl SubscriptionBuilder {
         self
     }
 
+    pub fn read_until(mut self, read_until: u64) -> Self {
+        self.read_until = read_until;
+        self
+    }
+
     pub fn build(self) -> Result<Subscription, Error> {
         let res = Subscription {
             server: self.server,
@@ -279,7 +291,7 @@ impl SubscriptionBuilder {
             reserved: self.reserved,
             symbolic_icon: self.symbolic_icon,
             display_name: self.display_name,
-            read_until: 0,
+            read_until: self.read_until,
         };
         res.validate()
     }

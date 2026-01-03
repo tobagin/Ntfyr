@@ -36,3 +36,4 @@ gdk-pixbuf = "0.21"
 async-channel = "2.5.0"
 relm4-macros = { version = "0.10.1", features = [], default-features = false }
 ksni = "0.3.3"
+pulldown-cmark = "0.13.0"

@@ -6,6 +6,7 @@ use adw::subclass::prelude::*;
 use gtk::{gdk, gio, glib};
 use gdk_pixbuf;
 use ntfy_daemon::models;
+use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 use tracing::error;
 
 use crate::error::*;
@@ -27,6 +28,36 @@ mod imp {
 
     impl WidgetImpl for MessageRow {}
     impl GridImpl for MessageRow {}
+}
+
+fn markdown_to_pango(markdown: &str) -> String {
+    let parser = Parser::new(markdown);
+    let mut pango = String::new();
+
+    for event in parser {
+        match event {
+            Event::Start(Tag::Strong) => pango.push_str("<b>"),
+            Event::End(TagEnd::Strong) => pango.push_str("</b>"),
+            Event::Start(Tag::Emphasis) => pango.push_str("<i>"),
+            Event::End(TagEnd::Emphasis) => pango.push_str("</i>"),
+            Event::Start(Tag::Link { dest_url, .. }) => {
+                pango.push_str(&format!("<a href=\"{}\">", dest_url));
+            }
+            Event::End(TagEnd::Link) => pango.push_str("</a>"),
+            Event::Start(Tag::CodeBlock(_)) => pango.push_str("<tt>"),
+            Event::End(TagEnd::CodeBlock) => pango.push_str("</tt>\n"),
+            Event::Code(code) => {
+                pango.push_str("<tt>");
+                pango.push_str(&glib::markup_escape_text(&code));
+                pango.push_str("</tt>");
+            }
+            Event::Text(text) => pango.push_str(&glib::markup_escape_text(&text)),
+            Event::SoftBreak | Event::HardBreak => pango.push('\n'),
+            _ => {}
+        }
+    }
+
+    pango
 }
 
 glib::wrapper! {
@@ -105,13 +136,18 @@ impl MessageRow {
 
         if let Some(message) = msg.display_message() {
             let label = gtk::Label::builder()
-                .label(&message)
                 .wrap_mode(gtk::pango::WrapMode::WordChar)
                 .xalign(0.0)
                 .wrap(true)
                 .selectable(true)
                 .hexpand(true)
                 .build();
+            if msg.markdown.unwrap_or_default() {
+                label.set_use_markup(true);
+                label.set_markup(&markdown_to_pango(&message));
+            } else {
+                label.set_label(&message);
+            }
             self.attach(&label, 0, row, 3, 1);
             row += 1;
         }
