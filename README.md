@@ -2,7 +2,7 @@
 
 A native ntfy.sh client for the GNOME Desktop.
 
-![Ntfyr Application](data/screenshots/1.png)
+![Ntfyr Application](data/screenshots/main-window.png)
 
 ## 🎉 Version 0.1.0 - Initial Release
 
@@ -129,9 +129,9 @@ Ntfyr is licensed under the [GPL-3.0-or-later](LICENSE).
 
 ## Screenshots
 
-| Main Window | Subscription View |
-|-------------|-------------------|
-| ![Main Window](data/screenshots/1.png) | ![Subscription](data/screenshots/2.png) |
+| Main Window | Topics View | Preferences |
+|-------------|-------------|-------------|
+| ![Main Window](data/screenshots/main-window.png) | ![Topics](data/screenshots/topics.png) | ![Preferences](data/screenshots/preferences.png) |
 
 ---
 

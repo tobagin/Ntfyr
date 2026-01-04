@@ -19,6 +19,6 @@
     <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-new-notification-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-new-notification-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-ntfy-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-ntfy-symbolic.svg</file>
-    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-add-server-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-add-server-symbolic.svg</file>
+
   </gresource>
 </gresources>

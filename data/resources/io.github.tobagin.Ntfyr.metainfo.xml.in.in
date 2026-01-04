@@ -27,17 +27,22 @@
   </keywords>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/ranfdev/Notify/main/data/screenshots/1.png</image>
-      <caption>Main window, welcome screen</caption>
+      <image>https://raw.githubusercontent.com/tobagin/Ntfyr/main/data/screenshots/main-window.png</image>
+      <caption>Main window</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/ranfdev/Notify/main/data/screenshots/2.png</image>
-      <caption>Main window, subscription view</caption>
+      <image>https://raw.githubusercontent.com/tobagin/Ntfyr/main/data/screenshots/topics.png</image>
+      <caption>Topics view</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/tobagin/Ntfyr/main/data/screenshots/preferences.png</image>
+      <caption>Preferences</caption>
     </screenshot>
   </screenshots>
   <url type="homepage">https://github.com/tobagin/Ntfyr</url>
   <url type="bugtracker">https://github.com/tobagin/Ntfyr/issues</url>
   <url type="donation">https://github.com/sponsors/tobagin</url>
+  <url type="help">https://github.com/tobagin/Ntfyr/discussions</url>
 
   <content_rating type="oars-1.0" />
   <releases>

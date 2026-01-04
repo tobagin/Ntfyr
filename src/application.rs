@@ -314,13 +314,13 @@ impl NtfyrApplication {
     fn show_about_dialog(&self) {
         let dialog = adw::AboutDialog::from_appdata(
             "/io/github/tobagin/Ntfyr/io.github.tobagin.Ntfyr.metainfo.xml",
-            None,
+            Some(crate::config::VERSION),
         );
         
         dialog.add_link("Support Questions", "https://github.com/tobagin/Ntfyr/discussions");
         
         dialog.add_credit_section(Some("Developers"), &["Tobagin", "Ranfdev"]);
-        dialog.add_credit_section(Some("Designers"), &["Tobagin"]);
+        dialog.add_credit_section(Some("Designers"), &["Tobagin", "Ranfdev"]);
         dialog.add_credit_section(Some("Acknowledgements"), &["GTK4", "Libadwaita", "ntfy-rs", "gettext-rs"]);
         
         dialog.set_copyright("© 2019-2026 The Ntfyr Team");
