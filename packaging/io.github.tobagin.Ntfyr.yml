@@ -30,5 +30,8 @@ modules:
     config-opts:
       - -Dprofile=release
     sources:
-      - type: dir
-        path: ../
+      - type: git
+        url: https://github.com/tobagin/Ntfyr
+        tag: v0.1.0
+        commit: 892c102d48ae98c85df00037373a81f46af33969
+      - cargo-sources.json
