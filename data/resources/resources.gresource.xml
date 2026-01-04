@@ -11,13 +11,14 @@
     <file compressed="true">io.github.tobagin.Ntfyr.metainfo.xml</file>
   </gresource>
   <gresource prefix="/io/github/tobagin/Ntfyr/icons/16x16/status/">
-    <file preprocess="xml-stripblanks" alias="dice3-symbolic.svg">../icons/dice3-symbolic.svg</file>
-    <file preprocess="xml-stripblanks" alias="paper-plane-symbolic.svg">../icons/paper-plane-symbolic.svg</file>
-    <file preprocess="xml-stripblanks" alias="code-symbolic.svg">../icons/code-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="dice3-symbolic.svg">../icons/hicolor/symbolic/apps/dice3-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="paper-plane-symbolic.svg">../icons/hicolor/symbolic/apps/paper-plane-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="code-symbolic.svg">../icons/hicolor/symbolic/apps/code-symbolic.svg</file>
   </gresource>
   <gresource prefix="/io/github/tobagin/Ntfyr/icons/scalable/status/">
-    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-symbolic.svg">../icons/io.github.tobagin.Ntfyr-symbolic.svg</file>
-    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-new-notification-symbolic.svg">../icons/io.github.tobagin.Ntfyr-new-notification-symbolic.svg</file>
-    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-ntfy-symbolic.svg">../icons/io.github.tobagin.Ntfyr-ntfy-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-new-notification-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-new-notification-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-ntfy-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-ntfy-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="io.github.tobagin.Ntfyr-add-server-symbolic.svg">../icons/hicolor/symbolic/apps/io.github.tobagin.Ntfyr-add-server-symbolic.svg</file>
   </gresource>
 </gresources>
