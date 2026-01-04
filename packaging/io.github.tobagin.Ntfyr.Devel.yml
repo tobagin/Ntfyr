@@ -1,4 +1,4 @@
-id: io.github.tobagin.Ntfyr.Devel
+id: io.github.tobagin.Ntfyr.Dev
 runtime: org.gnome.Platform
 runtime-version: '49'
 sdk: org.gnome.Sdk
@@ -12,9 +12,6 @@ finish-args:
   - --socket=wayland
   - --device=dri
   - --own-name=io.github.tobagin.Ntfyr.Devel
-  - --env=RUST_LOG=ntfyr=debug,ntfy_daemon=debug
-  - --env=G_MESSAGES_DEBUG=none
-  - --env=RUST_BACKTRACE=1
   - --talk-name=org.freedesktop.Notifications
   - --talk-name=org.kde.StatusNotifierWatcher
 build-options:

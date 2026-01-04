@@ -8,7 +8,7 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/preferences.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/account_dialog.ui</file>
     <file compressed="true">style.css</file>
-    <file compressed="true">io.github.tobagin.Ntfyr.metainfo.xml</file>
+    <file compressed="true" alias="io.github.tobagin.Ntfyr.metainfo.xml">@APP_ID@.metainfo.xml</file>
   </gresource>
   <gresource prefix="/io/github/tobagin/Ntfyr/icons/16x16/status/">
     <file preprocess="xml-stripblanks" alias="dice3-symbolic.svg">../icons/hicolor/symbolic/apps/dice3-symbolic.svg</file>

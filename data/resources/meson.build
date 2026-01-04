@@ -22,7 +22,7 @@ appdata_file = i18n.merge_file(
     output: '@BASENAME@',
     configuration: appdata_conf
   ),
-  output: '@0@.metainfo.xml'.format(base_id),
+  output: '@0@.metainfo.xml'.format(application_id),
   po_dir: podir,
   install: true,
   install_dir: datadir / 'metainfo'
@@ -40,7 +40,11 @@ endif
 
 resources = gnome.compile_resources(
   'resources',
-  'resources.gresource.xml',
+  configure_file(
+    input: 'resources.gresource.xml.in',
+    output: 'resources.gresource.xml',
+    configuration: {'APP_ID': application_id},
+  ),
   gresource_bundle: true,
   source_dir: meson.current_build_dir(),
   install: true,

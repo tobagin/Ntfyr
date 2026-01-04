@@ -27,6 +27,8 @@ modules:
   - name: ntfyr
     buildsystem: meson
     run-tests: true
+    config-opts:
+      - -Dprofile=release
     sources:
       - type: dir
         path: ../
