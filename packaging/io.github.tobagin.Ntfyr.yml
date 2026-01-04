@@ -4,7 +4,7 @@ runtime-version: '49'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-command: ntfyr
+command: notify
 finish-args:
   - --share=ipc
   - --share=network
@@ -24,14 +24,24 @@ build-options:
     - --socket=x11
     - --share=network
 modules:
+  - name: capnproto
+    buildsystem: simple
+    subdir: c++
+    build-commands:
+      - autoreconf -i
+      - ./configure --prefix=/app --disable-static --enable-shared
+      - make -j $FLATPAK_BUILDER_N_JOBS
+      - make install
+    sources:
+      - type: git
+        url: https://github.com/capnproto/capnproto.git
+        tag: v1.3.0
+        commit: 7dbb95989721016f8b590245ec7528c6ff03d1fe
   - name: ntfyr
     buildsystem: meson
-    run-tests: true
-    config-opts:
-      - -Dprofile=release
     sources:
       - type: git
         url: https://github.com/tobagin/Ntfyr
         tag: v0.1.0
-        commit: 892c102d48ae98c85df00037373a81f46af33969
+        commit: 78660678452c07e426115b8ff3737a342369d764
       - cargo-sources.json
