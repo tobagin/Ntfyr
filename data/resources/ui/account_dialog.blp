@@ -1,0 +1,41 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $NtfyrAccountDialog : Adw.Dialog {
+  title: "Add Account";
+  content-width: 400;
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-end-title-buttons: false;
+      [start]
+      Gtk.Button {
+        label: "Cancel";
+        clicked => $on_cancel_clicked() swapped;
+      }
+
+      [end]
+      Gtk.Button save_btn {
+        label: "Add";
+        styles ["suggested-action"]
+        clicked => $on_save_clicked() swapped;
+      }
+    }
+
+    content: Adw.PreferencesPage {
+      Adw.PreferencesGroup {
+        Adw.ComboRow server_row {
+          title: "Server";
+          model: Gtk.StringList server_model {};
+        }
+        Adw.EntryRow username_entry {
+          title: "Username";
+        }
+        Adw.PasswordEntryRow password_entry {
+          title: "Password";
+        }
+      }
+    };
+  }
+}

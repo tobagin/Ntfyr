@@ -296,6 +296,7 @@ impl NtfyrApplication {
         self.set_accels_for_action("app.about", &["F1"]);
         self.set_accels_for_action("win.add-topic", &["<Control>n"]);
         self.set_accels_for_action("win.search", &["<Control>f"]);
+        self.set_accels_for_action("win.clear-notifications", &["<Control><Shift>k"]);
     }
 
     fn setup_css(&self) {
@@ -315,6 +316,16 @@ impl NtfyrApplication {
             "/io/github/tobagin/Ntfyr/io.github.tobagin.Ntfyr.metainfo.xml",
             None,
         );
+        
+        dialog.add_link("Support Questions", "https://github.com/tobagin/Ntfyr/discussions");
+        
+        dialog.add_credit_section(Some("Developers"), &["Tobagin", "Ranfdev"]);
+        dialog.add_credit_section(Some("Designers"), &["Tobagin"]);
+        dialog.add_credit_section(Some("Acknowledgements"), &["GTK4", "Libadwaita", "ntfy-rs", "gettext-rs"]);
+        
+        dialog.set_copyright("© 2019-2026 The Ntfyr Team");
+        dialog.set_license_type(gtk::License::Gpl30);
+
         if let Some(w) = self.imp().window.borrow().upgrade() {
             dialog.present(Some(&w));
         }

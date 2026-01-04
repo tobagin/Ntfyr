@@ -41,22 +41,28 @@
 
   <content_rating type="oars-1.0" />
   <releases>
-    <release version="0.1.0" date="2026-01-03">
+    <release version="0.1.0" date="2026-01-04">
         <description>
             <p>Initial release of Ntfyr, a native client for ntfy.sh.</p>
             <ul>
+                <li>**New**: Subscriptions grouped by server for better organization</li>
+                <li>**New**: Unified server preferences with easy default server selection</li>
+                <li>**New**: Enhanced About dialog with credits and support links</li>
                 <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
-                <li>View past notifications</li>
+                <li>Support for custom servers and basic authentication</li>
+                <li>Markdown rendering for messages</li>
                 <li>Automatic background execution and autostart</li>
+                <li>View past notifications with local caching</li>
+                <li>Timezone conversion for timestamps</li>
+                <li>Message sorting by date</li>
                 <li>Support for attachments and action buttons</li>
                 <li>Advanced message dialog for sending complex notifications</li>
-                <li>Secure secret storage for private topics</li>
-                <li>Support for basic authentication and custom certificates</li>
+                <li>System tray integration</li>
             </ul>
         </description>
     </release>
   </releases>
-  <developer_name>ranfdev</developer_name>
+  <developer_name>The Ntfyr Team</developer_name>
   <update_contact>ranfdev@gmail.com</update_contact>
   <translation type="gettext">@gettext-package@</translation>
   <launchable type="desktop-id">@app-id@.desktop</launchable>

@@ -68,6 +68,7 @@ template $NtfyrWindow : Adw.ApplicationWindow {
             [start]
             Button {
               icon-name: "list-add-symbolic";
+              tooltip-text: _("Add Topic");
               clicked => $show_add_topic() swapped;
             }
             [end]
@@ -164,6 +165,7 @@ template $NtfyrWindow : Adw.ApplicationWindow {
                     "flat"
                   ]
                   icon-name: "code-symbolic";
+                  tooltip-text: _("Insert Code Snippet");
                 }
                 Entry entry {
                   placeholder-text: "Message...";
@@ -175,6 +177,7 @@ template $NtfyrWindow : Adw.ApplicationWindow {
                     "suggested-action"
                   ]
                   icon-name: "paper-plane-symbolic";
+                  tooltip-text: _("Send Message");
                 }
               }
             }

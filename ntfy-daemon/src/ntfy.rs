@@ -253,12 +253,19 @@ impl NtfyActor {
     ) -> impl Future<Output = anyhow::Result<SubscriptionHandle>> {
         let server = sub.server.clone();
         let topic = sub.topic.clone();
+        let since = self
+            .env
+            .db
+            .get_last_message_time(&server, &topic)
+            .unwrap_or_default()
+            .unwrap_or(0);
+
         let listener = ListenerHandle::new(ListenerConfig {
             http_client: self.env.http_client.clone(),
             credentials: self.env.credentials.clone(),
             endpoint: server.clone(),
             topic: topic.clone(),
-            since: sub.read_until,
+            since,
         });
         let listener_handles = self.listener_handles.clone();
         let sub = SubscriptionHandle::new(listener.clone(), sub, &self.env);

@@ -25,5 +25,13 @@
       <default>false</default>
       <summary>Start in background</summary>
     </key>
+    <key name="custom-servers" type="as">
+      <default>[]</default>
+      <summary>List of custom servers</summary>
+    </key>
+    <key name="default-server" type="s">
+      <default>'https://ntfy.sh'</default>
+      <summary>Default server for new subscriptions</summary>
+    </key>
   </schema>
 </schemalist>

@@ -28,14 +28,35 @@ template $NtfyrPreferences : Adw.PreferencesDialog {
       }
     }
 
+
+
+    Adw.PreferencesGroup {
+      title: "Servers";
+
+
+      [header-suffix]
+      Gtk.Button add_server_btn {
+        icon-name: "list-add-symbolic";
+        styles ["flat"]
+        valign: center;
+        tooltip-text: _("Add Server");
+      }
+
+      Gtk.ListBox added_servers {
+        styles ["boxed-list"]
+        selection-mode: none;
+      }
+    }
+
     Adw.PreferencesGroup {
       title: "Accounts";
 
       [header-suffix]
       Gtk.Button add_account_btn {
-        icon-name: "list-add-symbolic";
+        icon-name: "contact-new-symbolic";
         styles ["flat"]
         valign: center;
+        tooltip-text: _("Add Account");
       }
 
       Gtk.ListBox added_accounts {

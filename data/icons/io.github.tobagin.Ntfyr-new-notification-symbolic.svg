@@ -22,11 +22,11 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="44.5"
-     inkscape:cx="8"
-     inkscape:cy="6.6966292"
-     inkscape:window-width="1184"
-     inkscape:window-height="911"
+     inkscape:zoom="31.466252"
+     inkscape:cx="14.491717"
+     inkscape:cy="12.616692"
+     inkscape:window-width="1268"
+     inkscape:window-height="907"
      inkscape:window-x="26"
      inkscape:window-y="23"
      inkscape:window-maximized="0"
@@ -52,15 +52,10 @@
          id="path3" />
     </g>
   </g>
-  <text
-     xml:space="preserve"
-     style="font-size:4.65579px;writing-mode:lr-tb;direction:ltr;fill:#241f31;fill-opacity:1;stroke-width:0.711947;stroke-dasharray:none"
-     x="8.2541542"
-     y="7.5955057"
-     id="text4"><tspan
-       sodipodi:role="line"
-       id="tspan4"
-       x="8.2541542"
-       y="7.5955057"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:times;-inkscape-font-specification:times;fill:#241f31;fill-opacity:1;stroke-width:0.711947">!</tspan></text>
+  <circle
+     cx="13.769846"
+     cy="13.809458"
+     r="1.232295"
+     id="circle1"
+     style="stroke-width:0.352086;fill:#241f31;fill-opacity:1" />
 </svg>

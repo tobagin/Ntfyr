@@ -252,7 +252,7 @@ impl SubscriptionActor {
         if !already_stored {
             debug!(topic=?self.model.topic, muted=?self.model.muted, "checking if notification should be shown");
             // Show notification. If this fails, panic
-            if !{ self.model.muted } {
+            if !{ self.model.muted } && msg.time > self.model.read_until {
                 let notifier = self.env.notifier.clone();
 
                 let title = { msg.notification_title(&self.model) };

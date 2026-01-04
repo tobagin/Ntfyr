@@ -23,6 +23,10 @@ mod imp {
         #[template_child]
         pub startup_background_switch: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub add_server_btn: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub added_servers: TemplateChild<gtk::ListBox>,
+        #[template_child]
         pub add_account_btn: TemplateChild<gtk::Button>,
         #[template_child]
         pub added_accounts: TemplateChild<gtk::ListBox>,
@@ -35,8 +39,11 @@ mod imp {
                 startup_switch: Default::default(),
                 sort_descending_switch: Default::default(),
                 startup_background_switch: Default::default(),
+                add_server_btn: Default::default(),
+                added_servers: Default::default(),
                 add_account_btn: Default::default(),
                 added_accounts: Default::default(),
+
                 notifier: Default::default(),
             };
 
@@ -92,6 +99,39 @@ impl NtfyrPreferences {
             .bind("start-in-background", &*obj.imp().startup_background_switch, "active")
             .build();
 
+        // Server Logic
+        let this = obj.clone();
+        settings.connect_changed(Some("custom-servers"), move |_, _| {
+            let this = this.clone();
+            glib::MainContext::default().spawn_local(async move {
+                this.update_servers_ui();
+            });
+        });
+
+        
+        let this = obj.clone();
+        settings.connect_changed(Some("default-server"), move |_, _| {
+             let this = this.clone();
+             glib::MainContext::default().spawn_local(async move {
+                 this.update_servers_ui();
+             });
+        });
+
+
+        // Initial update
+        let this = obj.clone();
+        glib::MainContext::default().spawn_local(async move {
+            this.update_servers_ui();
+        });
+
+        let this = obj.clone();
+        obj.imp().add_server_btn.connect_clicked(move |btn| {
+            let this = this.clone();
+             btn.error_boundary().spawn(async move {
+                  this.on_add_server_clicked().await
+             });
+        });
+
         // settings.connect_changed("run-on-startup") handled in application.rs
 
         let this = obj.clone();
@@ -138,11 +178,19 @@ impl NtfyrPreferences {
                     .build();
                 row.add_css_class("property");
 
+                // Icon
+                let icon = gtk::Image::builder()
+                    .icon_name("avatar-default-symbolic")
+                    .build();
+                row.add_prefix(&icon);
+
+
                 // Details button
                 row.add_suffix(&{
                     let btn = gtk::Button::builder()
-                        .icon_name("info-symbolic")
+                        .icon_name("dialog-information-symbolic")
                         .tooltip_text("View Details")
+                        .valign(gtk::Align::Center)
                         .build();
                     btn.add_css_class("flat");
                     let server = a.server.clone();
@@ -164,6 +212,7 @@ impl NtfyrPreferences {
                     let btn = gtk::Button::builder()
                         .icon_name("document-edit-symbolic")
                         .tooltip_text("Edit Account")
+                        .valign(gtk::Align::Center)
                         .build();
                     btn.add_css_class("flat");
                     let this = self.clone();
@@ -182,16 +231,33 @@ impl NtfyrPreferences {
                     let btn = gtk::Button::builder()
                         .icon_name("user-trash-symbolic")
                         .tooltip_text("Remove Account")
+                        .valign(gtk::Align::Center)
                         .build();
                     btn.add_css_class("flat");
                     btn.add_css_class("error");
                     let this = self.clone();
                     let a = a.clone();
-                    btn.connect_clicked(move |btn| {
-                        let this = this.clone();
-                        let a = a.clone();
-                        btn.error_boundary()
-                            .spawn(async move { this.remove_account(&a.server).await });
+                    btn.connect_clicked(move |_| {
+                         let this = this.clone();
+                         let a = a.clone();
+                         let dialog = adw::AlertDialog::builder()
+                            .heading("Remove Account?")
+                            .body(format!("Are you sure you want to remove the account for {}?", a.server))
+                            .build();
+                         dialog.add_response("cancel", "Cancel");
+                         dialog.add_response("remove", "Remove");
+                         dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
+                         dialog.set_default_response(Some("cancel"));
+                         dialog.set_close_response("cancel");
+                         
+                         let this_clone = this.clone();
+                         dialog.choose(Some(&this), gio::Cancellable::NONE, move |result| {
+                             if result == "remove" {
+                                  glib::MainContext::default().spawn_local(async move {
+                                       let _ = this_clone.remove_account(&a.server).await;
+                                  });
+                             }
+                         });
                     });
                     btn
                 });
@@ -263,5 +329,157 @@ impl NtfyrPreferences {
             .await?;
         self.show_accounts().await?;
         Ok(())
+    }
+    pub fn update_servers_ui(&self) {
+        let settings = gio::Settings::new(crate::config::APP_ID);
+        let custom_servers = settings.strv("custom-servers");
+        let default_server = settings.string("default-server");
+        let imp = self.imp();
+
+        // Update ListBox
+        while let Some(child) = imp.added_servers.last_child() {
+            imp.added_servers.remove(&child);
+        }
+        
+        // We'll use this group to group the radio buttons
+        let mut group: Option<gtk::CheckButton> = None;
+
+        // Add Default Server (ntfy.sh)
+        {
+            let row = adw::ActionRow::builder()
+                  .title("https://ntfy.sh")
+                  .build();
+            
+            // Radio Button
+            let check = gtk::CheckButton::builder()
+                .active(default_server == "https://ntfy.sh")
+                .valign(gtk::Align::Center)
+                .build();
+            if let Some(g) = &group {
+                check.set_group(Some(g));
+            } else {
+                group = Some(check.clone());
+            }
+            
+            check.connect_toggled(move |btn| {
+                 if btn.is_active() {
+                      let settings = gio::Settings::new(crate::config::APP_ID);
+                      let _ = settings.set_string("default-server", "https://ntfy.sh");
+                 }
+            });
+            row.add_prefix(&check);
+            
+            let icon = gtk::Image::builder()
+                .icon_name("io.github.tobagin.Ntfyr-ntfy-symbolic")
+                .build();
+            row.add_prefix(&icon);
+             
+            imp.added_servers.append(&row);
+        }
+
+        for server in custom_servers {
+             let row = adw::ActionRow::builder()
+                  .title(&*server)
+                  .build();
+
+             // Radio Button
+             let check = gtk::CheckButton::builder()
+                 .active(default_server == server)
+                 .valign(gtk::Align::Center)
+                 .build();
+             if let Some(g) = &group {
+                 check.set_group(Some(g));
+             }
+             
+             let server_clone = server.clone();
+             check.connect_toggled(move |btn| {
+                  if btn.is_active() {
+                       let settings = gio::Settings::new(crate::config::APP_ID);
+                       let _ = settings.set_string("default-server", &server_clone);
+                  }
+             });
+             row.add_prefix(&check);
+
+             let icon = gtk::Image::builder()
+                .icon_name("network-server-symbolic")
+                .build();
+             row.add_prefix(&icon);
+             
+             let btn = gtk::Button::builder()
+                  .icon_name("user-trash-symbolic")
+                  .tooltip_text("Remove Server")
+                  .valign(gtk::Align::Center)
+                  .build();
+             btn.add_css_class("flat");
+             btn.add_css_class("error");
+             
+             let this = self.clone();
+             let s = server.clone();
+             btn.connect_clicked(move |_| {
+                  let this = this.clone();
+                  let s = s.clone();
+                  let dialog = adw::AlertDialog::builder()
+                       .heading("Remove Server?")
+                       .body(format!("Are you sure you want to remove {}?", s))
+                       .build();
+                  dialog.add_response("cancel", "Cancel");
+                  dialog.add_response("remove", "Remove");
+                  dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
+                  dialog.set_default_response(Some("cancel"));
+                  dialog.set_close_response("cancel");
+
+                  let this_clone = this.clone();
+                  dialog.choose(Some(&this), gio::Cancellable::NONE, move |result| {
+                       if result == "remove" {
+                            glib::MainContext::default().spawn_local(async move {
+                                 this_clone.remove_server(&s);
+                            });
+                       }
+                  });
+             });
+             
+             row.add_suffix(&btn);
+             imp.added_servers.append(&row);
+        }
+    }
+    pub async fn on_add_server_clicked(&self) -> anyhow::Result<()> {
+         let dialog = adw::AlertDialog::builder()
+              .heading("Add Server")
+              .body("Enter the URL of the custom server")
+              .build();
+         
+         let entry = gtk::Entry::builder()
+              .placeholder_text("https://example.com")
+              .activates_default(true)
+              .build();
+         
+         dialog.set_extra_child(Some(&entry));
+         dialog.add_response("cancel", "Cancel");
+         dialog.add_response("add", "Add");
+         dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+         dialog.set_default_response(Some("add"));
+         dialog.set_close_response("cancel");
+
+         let result = dialog.choose_future(Some(self)).await;
+         
+         if result == "add" {
+              let text = entry.text();
+              if !text.is_empty() {
+                   let settings = gio::Settings::new(crate::config::APP_ID);
+                   let mut servers: Vec<String> = settings.strv("custom-servers").into_iter().map(|s| s.to_string()).collect();
+                   if !servers.contains(&text.to_string()) && text != "https://ntfy.sh" {
+                        servers.push(text.to_string());
+                        let _ = settings.set_strv("custom-servers", servers.iter().map(|s| s.as_str()).collect::<Vec<&str>>().as_slice());
+                   }
+              }
+         }
+         Ok(())
+    }
+
+    pub fn remove_server(&self, server: &str) {
+         let settings = gio::Settings::new(crate::config::APP_ID);
+         let mut servers: Vec<String> = settings.strv("custom-servers").into_iter().map(|s| s.to_string()).collect();
+         servers.retain(|s| s != server);
+         let _ = settings.set_strv("custom-servers", servers.iter().map(|s| s.as_str()).collect::<Vec<&str>>().as_slice());
     }
 }

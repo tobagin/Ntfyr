@@ -203,4 +203,25 @@ impl Db {
         }
         Ok(())
     }
+
+    pub fn get_last_message_time(
+        &self,
+        server: &str,
+        topic: &str,
+    ) -> Result<Option<u64>, Error> {
+        let conn = self.conn.read().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT MAX(m.data ->> 'time')
+            FROM message m
+            JOIN server s ON m.server = s.id
+            WHERE s.endpoint = ?1 AND m.topic = ?2
+            ",
+        )?;
+        let mut rows = stmt.query(params![server, topic])?;
+        if let Some(row) = rows.next()? {
+            Ok(row.get(0)?)
+        } else {
+            Ok(None)
+        }
+    }
 }

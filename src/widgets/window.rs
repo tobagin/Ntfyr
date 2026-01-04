@@ -307,6 +307,17 @@ impl NtfyrWindow {
             let imp = this.imp();
             if let Some(i) = imp.subscription_list_model.find(&sub) {
                 imp.subscription_list_model.remove(i);
+
+                let n_items = imp.subscription_list_model.n_items();
+                if n_items > 0 {
+                    let new_index = if i < n_items { i } else { n_items - 1 };
+                    if let Some(row) = imp.subscription_list.row_at_index(new_index as i32) {
+                        imp.subscription_list.select_row(Some(&row));
+                        row.activate();
+                    }
+                } else {
+                    this.selected_subscription_changed(None);
+                }
             }
             Ok(())
         });
@@ -324,12 +335,92 @@ impl NtfyrWindow {
     fn bind_message_list(&self) {
         let imp = self.imp();
 
-        imp.subscription_list
-            .bind_model(Some(&imp.subscription_list_model), |obj| {
-                let sub = obj.downcast_ref::<Subscription>().unwrap();
+        let sorter = gtk::CustomSorter::new(|a, b| {
+            let a = a.downcast_ref::<Subscription>().unwrap();
+            let b = b.downcast_ref::<Subscription>().unwrap();
 
-                Self::build_subscription_row(&sub).upcast()
+            let server_a = a.server();
+            let server_b = b.server();
+
+            // Primary sort: Server
+            let server_cmp = server_a.cmp(&server_b);
+            if server_cmp != std::cmp::Ordering::Equal {
+                 return server_cmp.into();
+            }
+            
+            // Secondary sort: Topic
+            // Using display_name or topic? Let's use display_name or topic if display_name empty?
+            // Subscription has display_name and topic properties.
+            // Let's use simple string comparison on what is shown.
+            // But for stable sorting let's simply compare topics.
+            a.topic().cmp(&b.topic()).into()
+        });
+
+        let sort_model = gtk::SortListModel::new(Some(imp.subscription_list_model.clone()), Some(sorter));
+
+        imp.subscription_list
+            .bind_model(Some(&sort_model), |obj| {
+                let sub = obj.downcast_ref::<Subscription>().unwrap();
+                let row = Self::build_subscription_row(&sub);
+                unsafe {
+                    row.set_data("server_url", sub.server());
+                }
+                row.upcast()
             });
+        
+        imp.subscription_list.set_header_func(|row, before| {
+             let current_server = unsafe { 
+                 row.data::<String>("server_url").map(|s| s.as_ref().to_string()).unwrap_or_default()
+             };
+             
+             if let Some(before) = before {
+                  let before_server = unsafe { 
+                      before.data::<String>("server_url").map(|s| s.as_ref().to_string()).unwrap_or_default()
+                  };
+                  
+                  if current_server == before_server {
+                       row.set_header(gtk::Widget::NONE);
+                       return;
+                  }
+             }
+             
+             // Create header
+             let server = current_server;
+             
+             let box_ = gtk::Box::builder()
+                 .orientation(gtk::Orientation::Horizontal)
+                 .spacing(6)
+                 .margin_top(12)
+                 .margin_bottom(6)
+                 .margin_start(12)
+                 .margin_end(12)
+                 .build();
+             // .header style class?
+             
+             let icon_name = if server == "https://ntfy.sh" {
+                  "io.github.tobagin.Ntfyr-ntfy-symbolic"
+             } else {
+                  "network-server-symbolic"
+             };
+             
+             let icon = gtk::Image::builder()
+                 .icon_name(icon_name)
+                 .pixel_size(16)
+                 .build();
+             // Dim the icon slightly?
+             icon.set_opacity(0.7);
+                 
+             let label = gtk::Label::builder()
+                 .label(&server)
+                 .css_classes(vec!["caption", "dim-label"]) // use standard classes
+                 .halign(gtk::Align::Start)
+                 .build();
+                 
+             box_.append(&icon);
+             box_.append(&label);
+             
+             row.set_header(Some(&box_));
+        });
 
         let this = self.clone();
         imp.subscription_list.connect_row_activated(move |_, _row| {
@@ -365,7 +456,7 @@ impl NtfyrWindow {
         let this = self.clone();
         let set_sensitive = move |b| {
             let imp = this.imp();
-            imp.subscription_menu_btn.set_sensitive(b);
+            imp.subscription_menu_btn.set_visible(b);
             imp.code_btn.set_sensitive(b);
             imp.send_btn.set_sensitive(b);
             imp.entry.set_sensitive(b);
@@ -484,8 +575,18 @@ impl NtfyrWindow {
             }
         });
 
+        let muted_icon = gtk::Image::builder()
+            .icon_name("notifications-disabled-symbolic")
+            .visible(false)
+            .build();
+        
+        sub.bind_property("muted", &muted_icon, "visible")
+            .sync_create()
+            .build();
+
         b.append(&counter_chip);
         b.append(&label);
+        b.append(&muted_icon);
         b.append(&status_chip);
 
         b
