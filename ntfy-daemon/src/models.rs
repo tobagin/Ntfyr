@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
+
 pub const DEFAULT_SERVER: &str = "https://ntfy.sh";
 static EMOJI_MAP: OnceLock<HashMap<String, String>> = OnceLock::new();
 
@@ -172,7 +173,29 @@ impl Attachment {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum FilterAction {
+    Mute,
+    Discard,
+    MarkRead,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FilterRule {
+    pub name: String,
+    pub regex: String,
+    pub action: FilterAction,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Schedule {
+    pub start_time: String, // "HH:MM"
+    pub end_time: String,
+    pub days: Vec<u8>, // 0-6 (Sun-Sat)
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subscription {
     pub server: String,
     pub topic: String,
@@ -182,6 +205,10 @@ pub struct Subscription {
     pub reserved: bool,
     pub symbolic_icon: Option<String>,
     pub read_until: u64,
+    #[serde(default)]
+    pub rules: Option<Vec<FilterRule>>,
+    #[serde(default)]
+    pub schedule: Option<Schedule>,
 }
 
 impl Subscription {
@@ -231,6 +258,8 @@ pub struct SubscriptionBuilder {
     symbolic_icon: Option<String>,
     display_name: String,
     read_until: u64,
+    rules: Option<Vec<FilterRule>>,
+    schedule: Option<Schedule>,
 }
 
 impl SubscriptionBuilder {
@@ -244,6 +273,8 @@ impl SubscriptionBuilder {
             symbolic_icon: None,
             display_name: String::new(),
             read_until: 0,
+            rules: None,
+            schedule: None,
         }
     }
 
@@ -282,6 +313,16 @@ impl SubscriptionBuilder {
         self
     }
 
+    pub fn rules(mut self, rules: Option<Vec<FilterRule>>) -> Self {
+        self.rules = rules;
+        self
+    }
+
+    pub fn schedule(mut self, schedule: Option<Schedule>) -> Self {
+        self.schedule = schedule;
+        self
+    }
+
     pub fn build(self) -> Result<Subscription, Error> {
         let res = Subscription {
             server: self.server,
@@ -292,6 +333,8 @@ impl SubscriptionBuilder {
             symbolic_icon: self.symbolic_icon,
             display_name: self.display_name,
             read_until: self.read_until,
+            rules: self.rules,
+            schedule: self.schedule,
         };
         res.validate()
     }

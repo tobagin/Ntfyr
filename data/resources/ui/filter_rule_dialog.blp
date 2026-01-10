@@ -1,0 +1,56 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $FilterRuleDialog: Adw.Dialog {
+    title: "Add Filter Rule";
+    content-width: 400;
+    content-height: 300;
+
+    Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+            show-end-title-buttons: false;
+
+            [start]
+            Gtk.Button cancel_btn {
+                label: "Cancel";
+                action-name: "window.close";
+            }
+
+            [end]
+            Gtk.Button add_btn {
+                label: "Add";
+
+                css-classes: [
+                    "suggested-action",
+                ];
+            }
+        }
+
+        content: Adw.PreferencesPage {
+            Adw.PreferencesGroup {
+                title: "Rule Details";
+
+                Adw.EntryRow name_entry {
+                    title: "Name";
+                }
+
+                Adw.EntryRow regex_entry {
+                    title: "Regex Pattern";
+                }
+
+                Adw.ComboRow action_combo {
+                    title: "Action";
+
+                    model: Gtk.StringList {
+                        strings [
+                            "Mute",
+                            "Discard",
+                            "Mark Read",
+                        ]
+                    };
+                }
+            }
+        };
+    }
+}

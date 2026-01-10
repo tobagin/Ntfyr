@@ -1,11 +1,14 @@
 mod account_dialog;
+mod add_server_dialog;
 mod add_subscription_dialog;
 mod advanced_message_dialog;
 mod message_row;
 mod preferences;
 mod subscription_info_dialog;
+mod filter_rule_dialog;
 mod window;
 pub use account_dialog::NtfyrAccountDialog;
+pub use add_server_dialog::AddServerDialog;
 pub use add_subscription_dialog::AddSubscriptionDialog;
 pub use advanced_message_dialog::*;
 pub use message_row::*;

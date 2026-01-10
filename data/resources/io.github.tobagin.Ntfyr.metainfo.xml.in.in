@@ -46,6 +46,18 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.1.3" date="2026-01-10">
+        <description>
+            <p>UI refinements and new filtering capabilities.</p>
+            <ul>
+                <li>**Added**: New Filter Rules dialog and functionality</li>
+                <li>**Changed**: Unifying aesthetics for Add Server/Account dialogs</li>
+                <li>**Changed**: Improved Server Actions menu styling</li>
+                <li>**Fixed**: Correctly display muted icon for muted subscriptions</li>
+                <li>**Fixed**: Database migration reliability improvements</li>
+            </ul>
+        </description>
+    </release>
     <release version="0.1.2" date="2026-01-06">
         <description>
             <p>Improved sandboxing and security with portal-based notifications.</p>

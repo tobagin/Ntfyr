@@ -87,17 +87,23 @@ mod imp {
             app.setup_css();
             app.setup_gactions();
             app.setup_accels();
-            app.setup_autostart();
-            
-            // Karere-style background portal request at startup
-            let settings = gio::Settings::new(APP_ID);
-            let autostart_enabled = settings.boolean("run-on-startup");
-            
-            crate::async_utils::RUNTIME.spawn(async move {
-                if let Err(e) = super::NtfyrApplication::run_in_background(None, autostart_enabled).await {
-                    warn!("Failed to request background permission at startup: {}", e);
-                }
+            // Sync Autostart Action
+            let action_sync_autostart = gio::SimpleAction::new("sync-autostart", Some(glib::VariantTy::BOOLEAN));
+            action_sync_autostart.connect_activate(|_, parameter| {
+                 let enabled = parameter.unwrap().get::<bool>().unwrap();
+                 crate::async_utils::RUNTIME.spawn(async move {
+                    // Call the static helper method on the wrapper type
+                    if let Err(e) = super::NtfyrApplication::run_in_background(enabled).await {
+                        warn!("Failed to sync autostart: {}", e);
+                    }
+                 });
             });
+            app.add_action(&action_sync_autostart);
+
+            // Initial Sync
+            let settings = gio::Settings::new(APP_ID);
+            let enabled = settings.boolean("run-on-startup");
+            app.activate_action("sync-autostart", Some(&enabled.to_variant()));
         }
 
         fn command_line(&self, command_line: &gio::ApplicationCommandLine) -> glib::ExitCode {
@@ -110,13 +116,10 @@ mod imp {
                 app.ensure_rpc_running();
             }
 
+            // We don't trigger autostart sync here to match Karere's behavior.
+            // Startup (primary instance) handles it via the action.
+
             let settings = gio::Settings::new(crate::config::APP_ID);
-            let autostart = settings.boolean("run-on-startup");
-            crate::async_utils::RUNTIME.spawn(async move {
-                if let Err(e) = super::NtfyrApplication::run_in_background(None, autostart).await {
-                    warn!(error = %e, "couldn't request running in background from portal");
-                }
-            });
 
             if is_daemon {
                 return glib::ExitCode::SUCCESS;
@@ -353,99 +356,33 @@ impl NtfyrApplication {
         glib::ExitCode::from(self.run_with_args(&std::env::args().collect::<Vec<_>>()))
     }
     
-    fn setup_autostart(&self) {
-        let settings = gio::Settings::new(crate::config::APP_ID);
+
+
+
+
+
+    async fn run_in_background(autostart: bool) -> anyhow::Result<()> {
+        info!(autostart_request = autostart, "Initiating background portal request via ashpd");
+
+        let request = ashpd::desktop::background::Background::request()
+            .reason("Receive notifications in the background")
+            .auto_start(autostart);
+
+        request.send().await?;
+
+        info!("Background portal request initiated");
+
+        // Set status for GNOME Background Apps
+        // Currently ashpd doesn't expose SetStatus directly on Background proxy helper easily?
+        // Actually it might not be needed if RequestBackground works. 
+        // Karere doesn't seem to set status in the snippet I saw?
+        // But Ntfyr did. 
+        // We can use zbus for status if needed, or rely on Background portal.
+        // Let's stick to what ashpd provides. If SetStatus is needed we can add it later.
+        // However, ashpd 0.12 might implicitly handle things? 
+        // Let's check if we can set status via ashpd or if we should just drop it for now (Karere doesn't seem to use it in the snippet).
+        // Actually, if we look at Karere usage, it just calls `request()`.
         
-        let app = self.clone();
-        settings.connect_changed(Some("run-on-startup"), move |_, _| {
-            debug!("Run on startup setting changed");
-            let app = app.clone();
-            
-            // We need to get the window from the main thread
-            let identifier = if let Some(win) = app.imp().window.borrow().upgrade() {
-                // from_native is async and needs a reactor. 
-                // We use a temporary runtime on the main thread here.
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap();
-                rt.block_on(async move {
-                    match ashpd::WindowIdentifier::from_native(&win).await {
-                        Some(id) => Some(id),
-                        None => {
-                            warn!("Failed to get window identifier");
-                            None
-                        }
-                    }
-                })
-            } else {
-                None
-            };
-
-            // Convert identifier to string to be Send
-            let identifier_str = identifier.map(|id| id.to_string());
-
-            let settings = gio::Settings::new(crate::config::APP_ID);
-            let autostart = settings.boolean("run-on-startup");
-
-            // Run the portal request in a background thread to avoid blocking and provide a reactor for zbus
-            crate::async_utils::RUNTIME.spawn(async move {
-                info!("Calling run_in_background from background thread");
-                if let Err(e) = Self::run_in_background(identifier_str, autostart).await {
-                     warn!("Failed to update autostart portal: {}", e);
-                } else {
-                    info!("Autostart portal updated");
-                }
-            });
-        });
-    }
-
-    #[allow(dead_code)]
-    fn update_autostart_file(&self, _enable: bool) -> std::io::Result<()> {
-        // Legacy method, not used in the portal-based autostart pattern
-        Ok(())
-    }
-
-
-    async fn run_in_background(identifier: Option<String>, autostart: bool) -> anyhow::Result<()> {
-        info!(autostart_request = autostart, "Initiating background portal request via zbus");
-
-        let connection = zbus::Connection::session().await?;
-        let proxy = zbus::Proxy::new(
-            &connection,
-            "org.freedesktop.portal.Desktop",
-            "/org/freedesktop/portal/desktop",
-            "org.freedesktop.portal.Background",
-        )
-        .await?;
-
-        let mut options = std::collections::HashMap::new();
-        options.insert("reason", zbus::zvariant::Value::from("Receive notifications in the background"));
-        options.insert("autostart", zbus::zvariant::Value::from(autostart));
-        // Note: portal expects "dbus-activatable" with a hyphen
-        options.insert("commandline", zbus::zvariant::Value::from(vec!["ntfyr", "--daemon"]));
-        options.insert("dbus-activatable", zbus::zvariant::Value::from(false));
-
-        let parent_window = identifier.unwrap_or_default();
-
-        let request_path: zbus::zvariant::OwnedObjectPath = proxy
-            .call_method("RequestBackground", &(&parent_window, &options))
-            .await?
-            .body()
-            .deserialize()?;
-
-        info!(request_path = %request_path, "Background portal request initiated");
-
-        // Karere pattern: also set status to ensure it appears in GNOME Background Apps
-        let mut status_options = std::collections::HashMap::new();
-        status_options.insert("message", zbus::zvariant::Value::from("Running in background"));
-        
-        if let Err(e) = proxy.call_method("SetStatus", &(status_options)).await {
-            warn!("Failed to set background status: {}", e);
-        } else {
-            debug!("Background status set successfully");
-        }
-
         Ok(())
     }
 
@@ -463,8 +400,18 @@ impl NtfyrApplication {
 
         let (s, r) = async_channel::unbounded::<models::Notification>();
 
-        let app = self.clone();
-        glib::MainContext::ref_thread_default().spawn_local(async move {
+        let (ui_tx, ui_rx) = async_channel::unbounded::<()>();
+
+        let app_weak = self.downgrade();
+        glib::MainContext::default().spawn_local(async move {
+            while let Ok(_) = ui_rx.recv().await {
+                if let Some(app) = app_weak.upgrade() {
+                    app.set_unread(true);
+                }
+            }
+        });
+
+        crate::async_utils::RUNTIME.spawn(async move {
             // Create the notification proxy once
             let proxy = match ashpd::desktop::notification::NotificationProxy::new().await {
                 Ok(p) => p,
@@ -500,7 +447,7 @@ impl NtfyrApplication {
                 if let Err(e) = proxy.add_notification(&notification_id, portal_notif).await {
                     error!("Failed to send notification via portal: {}", e);
                 } else {
-                    app.set_unread(true);
+                    ui_tx.send(()).await.ok();
                 }
             }
         });

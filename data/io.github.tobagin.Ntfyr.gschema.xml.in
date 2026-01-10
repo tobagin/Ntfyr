@@ -14,7 +14,7 @@
       <summary>Window maximized state</summary>
     </key>
     <key name="run-on-startup" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Run on startup</summary>
     </key>
     <key name="sort-descending" type="b">

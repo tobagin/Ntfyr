@@ -228,8 +228,78 @@ impl SubscriptionActor {
         debug!(server=?server, "message published successfully");
         Ok(())
     }
+    fn check_filters(&self, msg: &ReceivedMessage) -> Option<models::FilterAction> {
+        let Some(rules) = &self.model.rules else { return None };
+        let mut text = msg.display_title().unwrap_or_default();
+        text.push_str(" ");
+        text.push_str(&msg.display_message().unwrap_or_default());
+        
+        for rule in rules {
+             if let Ok(re) = regex::Regex::new(&rule.regex) {
+                 if re.is_match(&text) {
+                     return Some(rule.action.clone());
+                 }
+             }
+        }
+        None
+    }
+
+    fn check_schedule(&self) -> bool {
+        // Returns true if notification should be MUTED
+        let Some(schedule) = &self.model.schedule else { return false };
+        
+        use chrono::{Local, Timelike, Datelike};
+        let now = Local::now();
+        let weekday = now.weekday().num_days_from_sunday() as u8;
+
+        let parse_time = |s: &str| -> Option<(u32, u32)> {
+            let parts: Vec<&str> = s.split(':').collect();
+            if parts.len() != 2 { return None; }
+            Some((parts[0].parse().ok()?, parts[1].parse().ok()?))
+        };
+
+        let Some((start_h, start_m)) = parse_time(&schedule.start_time) else { return false };
+        let Some((end_h, end_m)) = parse_time(&schedule.end_time) else { return false };
+
+        let now_mins = now.hour() * 60 + now.minute();
+        let start_mins = start_h * 60 + start_m;
+        let end_mins = end_h * 60 + end_m;
+
+        if start_mins < end_mins {
+            // Simple range (e.g. 09:00 - 17:00)
+            if schedule.days.contains(&weekday) {
+                return now_mins >= start_mins && now_mins < end_mins;
+            }
+        } else {
+            // Crosses midnight (e.g. 22:00 - 07:00)
+            // It is quiet if:
+            // 1. It's after start_mins AND today is enabled
+            // 2. It's before end_mins AND yesterday was enabled
+            
+            if now_mins >= start_mins && schedule.days.contains(&weekday) {
+                return true;
+            }
+            if now_mins < end_mins {
+                let yesterday_weekday = if weekday == 0 { 6 } else { weekday - 1 };
+                if schedule.days.contains(&yesterday_weekday) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
     fn handle_msg_event(&mut self, msg: ReceivedMessage) {
         debug!(topic=?self.model.topic, "handling new message");
+
+        // Check for Discard rule BEFORE storage
+        let filter_action = self.check_filters(&msg);
+        if let Some(models::FilterAction::Discard) = &filter_action {
+             debug!(topic=?self.model.topic, "message discarded by filter rule");
+             return;
+        }
+
         // Store in database
         let already_stored: bool = {
             let json_ev = &serde_json::to_string(&msg).unwrap();
@@ -251,8 +321,34 @@ impl SubscriptionActor {
 
         if !already_stored {
             debug!(topic=?self.model.topic, muted=?self.model.muted, "checking if notification should be shown");
+            
+            let mut muted = self.model.muted;
+            
+            // Check filters for Mute
+            if let Some(models::FilterAction::Mute) = filter_action {
+                muted = true;
+                debug!("muted by filter");
+            }
+            if let Some(models::FilterAction::MarkRead) = filter_action {
+                muted = true;
+                debug!("muted by mark_read filter");
+                
+                // Update read_until
+                if let Err(e) = self.env.db.update_read_until(&self.model.server, &self.model.topic, msg.time) {
+                    error!(error=?e, "failed to update read_until for mark_read rule");
+                } else {
+                    self.model.read_until = msg.time;
+                }
+            }
+            
+            // Check Schedule
+            if !muted && self.check_schedule() {
+                muted = true;
+                debug!("muted by schedule");
+            }
+
             // Show notification. If this fails, panic
-            if !{ self.model.muted } && msg.time > self.model.read_until {
+            if !muted && msg.time > self.model.read_until {
                 let notifier = self.env.notifier.clone();
 
                 let title = { msg.notification_title(&self.model) };

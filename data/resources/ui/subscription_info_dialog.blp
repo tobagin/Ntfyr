@@ -1,45 +1,138 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $SubscriptionInfoDialog : Adw.Dialog {
+template $SubscriptionInfoDialog: Adw.Dialog {
   title: "Subscription Info";
+
   Adw.ToolbarView {
     [top]
     Adw.HeaderBar {}
-    Adw.Clamp {
-      Gtk.Box {
-        orientation: vertical;
-        spacing: 8;
-        margin-top: 8;
-        margin-bottom: 8;
-        margin-start: 8;
-        margin-end: 8;
-        Gtk.ListBox {
-          Adw.EntryRow display_name_entry {
-            title: "Display Name";
+
+    Adw.PreferencesPage {
+      Adw.PreferencesGroup {
+        title: "General";
+
+        Adw.EntryRow display_name_entry {
+          title: "Display Name";
+        }
+
+        Adw.ActionRow {
+          title: "Topic";
+          subtitle-selectable: true;
+          subtitle: bind (template.subscription as <$TopicSubscription>).topic as <string>;
+
+          styles [
+            "property",
+          ]
+        }
+
+        Adw.ActionRow {
+          title: "Server";
+          subtitle: bind (template.subscription as <$TopicSubscription>).server as <string>;
+          subtitle-selectable: true;
+
+          styles [
+            "property",
+          ]
+        }
+
+        Adw.SwitchRow muted_switch_row {
+          title: "Muted";
+        }
+      }
+
+      Adw.PreferencesGroup {
+        title: "Do Not Disturb Schedule";
+
+        Adw.SwitchRow schedule_enabled_switch {
+          title: "Enable Schedule";
+        }
+
+        Adw.EntryRow schedule_start_entry {
+          title: "Start Time";
+          text: "22:00";
+        }
+
+        Adw.EntryRow schedule_end_entry {
+          title: "End Time";
+          text: "07:00";
+        }
+
+        Adw.PreferencesRow {
+          Gtk.Box {
+            orientation: vertical;
+            spacing: 12;
+            margin-top: 12;
+            margin-bottom: 12;
+            margin-start: 12;
+
+            Gtk.Label {
+              label: "Active Days";
+              halign: start;
+            }
+
+            Gtk.Box schedule_days_box {
+              orientation: horizontal;
+              valign: center;
+              halign: center;
+              spacing: 6;
+              margin-end: 12;
+
+              Gtk.ToggleButton {
+                label: "M"; // Monday
+              }
+
+              Gtk.ToggleButton {
+                label: "T"; // Tuesday
+              }
+
+              Gtk.ToggleButton {
+                label: "W"; // Wednesday
+              }
+
+              Gtk.ToggleButton {
+                label: "T"; // Thursday
+              }
+
+              Gtk.ToggleButton {
+                label: "F"; // Friday
+              }
+
+              Gtk.ToggleButton {
+                label: "S"; // Saturday
+              }
+
+              Gtk.ToggleButton {
+                label: "S"; // Sunday
+              }
+            }
           }
+        }
+      }
+
+      Adw.PreferencesGroup {
+        title: "Smart Filters";
+
+        header-suffix: Gtk.Button add_rule_btn {
+          icon-name: "list-add-symbolic";
+          valign: center;
+
+          styles [
+            "flat",
+          ]
+        };
+
+        Gtk.ListBox rules_list {
+          selection-mode: none;
+
+          [placeholder]
           Adw.ActionRow {
-            title: "Topic";
-            subtitle-selectable: true;
-            subtitle: bind (template.subscription as <$TopicSubscription>).topic as <string>;
-            styles [
-              "property"
-            ]
-          }
-          Adw.ActionRow {
-            title: "Server";
-            subtitle: bind (template.subscription as <$TopicSubscription>).server as <string>;
-            subtitle-selectable: true;
-            styles [
-              "property"
-            ]
-          }
-          Adw.SwitchRow muted_switch_row {
-            title: "Muted";
+            title: "No rules configured";
+            icon-name: "accessories-text-editor-symbolic";
           }
 
           styles [
-            "boxed-list"
+            "boxed-list",
           ]
         }
       }

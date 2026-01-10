@@ -12,8 +12,6 @@ use once_cell::sync::Lazy;
 #[derive(Default, Debug, Clone)]
 pub struct Widgets {
     pub topic_entry: adw::EntryRow,
-    pub server_combo: adw::ComboRow,
-    pub server_entry: adw::EntryRow,
     pub sub_btn: gtk::Button,
 }
 mod imp {
@@ -21,7 +19,7 @@ mod imp {
     #[derive(Debug, Default)]
     pub struct AddSubscriptionDialog {
         pub widgets: RefCell<Widgets>,
-        pub init_custom_server: OnceCell<String>,
+        pub server_url: OnceCell<String>,
     }
 
     #[glib::object_subclass]
@@ -55,62 +53,18 @@ glib::wrapper! {
 }
 
 impl AddSubscriptionDialog {
-    pub fn new(custom_server: Option<String>) -> Self {
+    pub fn new(server_url: String) -> Self {
         let this: Self = glib::Object::builder().build();
-        if let Some(s) = custom_server {
-            if s != ntfy_daemon::models::DEFAULT_SERVER {
-                this.imp().init_custom_server.set(s).unwrap();
-            }
-        }
+        this.imp().server_url.set(server_url).unwrap();
         this.build_ui();
         this
     }
     fn build_ui(&self) {
         let imp = self.imp();
         let obj = self.clone();
+        let server_url = imp.server_url.get().unwrap();
+        
         obj.set_title("Subscribe To Topic");
-
-        let settings = gio::Settings::new(crate::config::APP_ID);
-        let custom_servers = settings.strv("custom-servers");
-        let default_server = settings.string("default-server");
-
-        let model = gtk::StringList::new(&[]);
-        model.append("https://ntfy.sh");
-        for server in &custom_servers {
-            model.append(server);
-        }
-        model.append("Custom...");
-
-        let mut selected_idx = 0;
-        if let Some(s) = imp.init_custom_server.get() {
-            // If initialized with a custom server (e.g. from deep link?), try to find it
-            // If not found, select "Custom..." and fill entry later? 
-            // Logic: if provided custom server is in list, select it. Else select "Custom..."
-             let mut found = false;
-             for i in 0..model.n_items() {
-                  if let Some(item) = model.string(i) {
-                       if item == *s {
-                            selected_idx = i;
-                            found = true;
-                            break;
-                       }
-                  }
-             }
-             if !found {
-                  selected_idx = model.n_items() - 1; // Custom...
-             }
-        } else {
-             // Default to preference
-             for i in 0..model.n_items() {
-                  if let Some(item) = model.string(i) {
-                       if item == default_server {
-                            selected_idx = i;
-                            break;
-                       }
-                  }
-             }
-        }
-
 
         relm4_macros::view! {
             toolbar_view = adw::ToolbarView {
@@ -125,11 +79,10 @@ impl AddSubscriptionDialog {
                     set_margin_bottom: 12,
                     append = &gtk::Label {
                         add_css_class: "dim-label",
-                        set_label: "Topics may not be password-protected, so choose a name that's not easy to guess. \
-                            Once subscribed, you can PUT/POST notifications.",
+                        set_label: &format!("Subscribing to topic on {}", server_url),
                         set_wrap: true,
                         set_xalign: 0.0,
-                        set_wrap_mode: gtk::pango::WrapMode::WordChar
+                        set_halign: gtk::Align::Center,
                     },
                     append = &gtk::ListBox {
                         add_css_class: "boxed-list",
@@ -150,16 +103,6 @@ impl AddSubscriptionDialog {
                                 }
                             }
                         },
-                        append: server_combo = &adw::ComboRow {
-                            set_title: "Server",
-                            set_model: Some(&model),
-                            set_selected: selected_idx,
-                        },
-                        append: server_entry = &adw::EntryRow {
-                            set_title: "Custom Server URL",
-                            set_visible: false, // Initially hidden, logic below updates it
-                            set_text: imp.init_custom_server.get().map(|x| x.as_str()).unwrap_or(""),
-                        }
                     },
                     append: sub_btn = &gtk::Button {
                         set_label: "Subscribe",
@@ -175,27 +118,11 @@ impl AddSubscriptionDialog {
             },
         }
 
-        // Logic to toggle server_entry visibility
-        let combo = server_combo.clone();
-        let entry = server_entry.clone();
-        let combo_notify = move || {
-             let model = combo.model().and_downcast::<gtk::StringList>().unwrap();
-             let selected = combo.selected();
-             let is_custom = selected == model.n_items() - 1; // Last item is "Custom..."
-             entry.set_visible(is_custom);
-        };
-        // Run once
-        combo_notify();
-        // Connect signal
-        let f = combo_notify.clone();
-        server_combo.connect_selected_notify(move |_| f());
-
-
         let debounced_error_check = {
             let db = crate::async_utils::Debouncer::new();
             let objc = obj.clone();
             move || {
-                db.call(std::time::Duration::from_millis(500), move || {
+                db.call(std::time::Duration::from_millis(100), move || {
                     objc.check_errors()
                 });
             }
@@ -206,68 +133,53 @@ impl AddSubscriptionDialog {
             .delegate()
             .unwrap()
             .connect_changed(move |_| f.clone()());
-        let f = debounced_error_check.clone();
-        server_entry
-            .delegate()
-            .unwrap()
-            .connect_changed(move |_| f.clone()());
-        let f = debounced_error_check.clone();
-        server_combo.connect_selected_notify(move |_| f.clone()());
 
+        // Initial check
+        debounced_error_check();
+        
+        // Mock server widget for struct compatibility, using RefCell
+        // Since we removed them from UI, we still need them in struct if we keep struct same?
+        // Wait, I can update the struct definition in replacement content too!
+        // But the struct definition is at top of file, so let's update that separate or included?
+        // The targeted range (EndLine: 278) covers 'imp' module end but NOT 'Widgets' struct definition at line 12.
+        // So I must update Widgets struct separately or accept unused fields if I just change the build_ui logic.
+        // Actually, let's redefine Widgets in imp logic or update it first.
+        
+        // For now, I will populate the struct with dummy widgets or just remove them from struct in a separate call?
+        // Let's update `Widgets` struct first or here? 
+        // I cannot easily update line 12-18 and 22-278 in one go if I don't replace whole file.
+        // Let's replace the whole file content for safety and correctness.
+        
         imp.widgets.replace(Widgets {
             topic_entry,
-            server_combo,
-            server_entry,
             sub_btn,
         });
 
-        obj.set_content_width(480);
+        obj.set_content_width(400);
         obj.set_child(Some(&toolbar_view));
     }
+    
     pub fn subscription(&self) -> Result<models::Subscription, ntfy_daemon::Error> {
         let w = { self.imp().widgets.borrow().clone() };
-        let mut sub = models::Subscription::builder(w.topic_entry.text().to_string());
+        let server = self.imp().server_url.get().unwrap();
         
-        // Get selected server from combo
-        if let Some(model) = w.server_combo.model().and_downcast::<gtk::StringList>() {
-             let selected = w.server_combo.selected();
-             // Last item is "Custom..."
-             if selected == model.n_items() - 1 {
-                  sub = sub.server(w.server_entry.text().to_string());
-             } else if let Some(s) = model.string(selected) {
-                  // Explicitly set server even if default, to be safe
-                  sub = sub.server(s.to_string());
-             }
-        }
-        
-        sub.build()
+        models::Subscription::builder(w.topic_entry.text().to_string())
+            .server(server.clone())
+            .build()
     }
+    
     fn check_errors(&self) {
         let w = { self.imp().widgets.borrow().clone() };
         let sub = self.subscription();
 
-        w.server_entry.remove_css_class("error");
-        w.server_combo.remove_css_class("error");
         w.topic_entry.remove_css_class("error");
         w.sub_btn.set_sensitive(true);
 
         if let Err(ntfy_daemon::Error::InvalidSubscription(errs)) = sub {
             w.sub_btn.set_sensitive(false);
             for e in errs {
-                match e {
-                    ntfy_daemon::Error::InvalidTopic(_) => {
-                        w.topic_entry.add_css_class("error");
-                    }
-                    ntfy_daemon::Error::InvalidServer(_) => {
-                         if let Some(model) = w.server_combo.model().and_downcast::<gtk::StringList>() {
-                              if w.server_combo.selected() == model.n_items() - 1 {
-                                   w.server_entry.add_css_class("error");
-                              } else {
-                                   w.server_combo.add_css_class("error");
-                              }
-                         }
-                    }
-                    _ => {}
+                if let ntfy_daemon::Error::InvalidTopic(_) = e {
+                     w.topic_entry.add_css_class("error");
                 }
             }
         }

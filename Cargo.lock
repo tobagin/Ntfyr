@@ -1971,6 +1971,7 @@ dependencies = [
  "anyhow",
  "async-channel",
  "async-trait",
+ "chrono",
  "clap",
  "futures",
  "http",
@@ -1991,7 +1992,7 @@ dependencies = [
 
 [[package]]
 name = "ntfyr"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "ashpd",

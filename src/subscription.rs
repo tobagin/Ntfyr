@@ -55,8 +55,16 @@ mod imp {
         #[property(get)]
         pub unread_count: Cell<u32>,
         pub read_until: Cell<u64>,
+        pub rules: RefCell<Option<Vec<models::FilterRule>>>,
+        pub schedule: RefCell<Option<models::Schedule>>,
         pub messages: gio::ListStore,
         pub client: OnceCell<ntfy_daemon::SubscriptionHandle>,
+        #[property(get)]
+        pub reserved: Cell<bool>,
+        #[property(get)]
+        pub has_rules: Cell<bool>,
+        #[property(get)]
+        pub has_schedule: Cell<bool>,
     }
 
     impl Subscription {
@@ -79,6 +87,11 @@ mod imp {
                 client: Default::default(),
                 unread_count: Default::default(),
                 read_until: Default::default(),
+                rules: Default::default(),
+                schedule: Default::default(),
+                reserved: Default::default(),
+                has_rules: Default::default(),
+                has_schedule: Default::default(),
             }
         }
     }
@@ -124,8 +137,16 @@ impl Subscription {
         muted: bool,
         read_until: u64,
         display_name: &str,
+        rules: Option<Vec<models::FilterRule>>,
+        schedule: Option<models::Schedule>,
+        reserved: bool,
     ) {
         let imp = self.imp();
+        
+        // Calculate flags before moving ownership
+        let has_rules = rules.as_ref().map(|v| !v.is_empty()).unwrap_or(false);
+        let has_schedule = schedule.is_some();
+
         imp.topic.replace(topic.to_string());
         self.notify_topic();
         imp.server.replace(server.to_string());
@@ -134,7 +155,21 @@ impl Subscription {
         self.notify_muted();
         imp.read_until.replace(read_until);
         self.notify_unread_count();
+        
+        // Move objects
+        imp.rules.replace(rules);
+        imp.schedule.replace(schedule);
+        
         self._set_display_name(display_name.to_string());
+        
+        imp.reserved.set(reserved);
+        self.notify_reserved();
+        
+        imp.has_rules.set(has_rules);
+        self.notify_has_rules();
+        
+        imp.has_schedule.set(has_schedule);
+        self.notify_has_schedule();
     }
 
     fn load(&self) -> impl Future<Output = anyhow::Result<()>> {
@@ -149,6 +184,9 @@ impl Subscription {
                 model.muted,
                 model.read_until,
                 &model.display_name,
+                model.rules,
+                model.schedule,
+                model.reserved,
             );
 
             let (prev_msgs, mut rx) = remote_subscription.attach().await;
@@ -216,12 +254,49 @@ impl Subscription {
                 models::Subscription::builder(self.topic())
                     .display_name(imp.display_name.borrow().to_string())
                     .muted(imp.muted.get())
+                    .rules(imp.rules.borrow().clone())
+                    .schedule(imp.schedule.borrow().clone())
                     .build()
                     .map_err(|e| anyhow::anyhow!("invalid subscription data {:?}", e))?,
             )
             .await?;
         Ok(())
     }
+
+    pub fn get_rules(&self) -> Option<Vec<models::FilterRule>> {
+        self.imp().rules.borrow().clone()
+    }
+
+    pub fn set_rules(&self, rules: Option<Vec<models::FilterRule>>) -> impl Future<Output = anyhow::Result<()>> {
+        let this = self.clone();
+        async move {
+            let has_rules = rules.as_ref().map(|v| !v.is_empty()).unwrap_or(false);
+            this.imp().rules.replace(rules);
+            
+            this.imp().has_rules.set(has_rules);
+            this.notify_has_rules();
+            
+            this.send_updated_info().await
+        }
+    }
+
+    pub fn get_schedule(&self) -> Option<models::Schedule> {
+        self.imp().schedule.borrow().clone()
+    }
+
+    pub fn set_schedule(&self, schedule: Option<models::Schedule>) -> impl Future<Output = anyhow::Result<()>> {
+        let this = self.clone();
+        async move {
+            let has_schedule = schedule.is_some();
+            this.imp().schedule.replace(schedule);
+             
+            this.imp().has_schedule.set(has_schedule);
+            this.notify_has_schedule();
+
+            this.send_updated_info().await
+        }
+    }
+
     fn last_message(list: &gio::ListStore) -> Option<models::ReceivedMessage> {
         let n = list.n_items();
         let last = list
@@ -232,11 +307,22 @@ impl Subscription {
     }
     fn update_unread_count(&self) {
         let imp = self.imp();
-        if Self::last_message(&imp.messages).map(|last| last.time) > Some(imp.read_until.get()) {
-            imp.unread_count.set(1);
-        } else {
-            imp.unread_count.set(0);
+        let read_until = imp.read_until.get();
+        
+        // Count messages that are newer than read_until
+        let mut unread = 0u32;
+        for i in 0..imp.messages.n_items() {
+            if let Some(item) = imp.messages.item(i) {
+                if let Some(obj) = item.downcast_ref::<glib::BoxedAnyObject>() {
+                    let msg = obj.borrow::<models::ReceivedMessage>();
+                    if msg.time > read_until {
+                        unread += 1;
+                    }
+                }
+            }
         }
+        
+        imp.unread_count.set(unread);
         self.notify_unread_count();
     }
 

@@ -1,4 +1,4 @@
-id: io.github.tobagin.Ntfyr.Dev
+id: io.github.tobagin.Ntfyr.Devel
 runtime: org.gnome.Platform
 runtime-version: '49'
 sdk: org.gnome.Sdk

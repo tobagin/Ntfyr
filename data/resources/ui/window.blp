@@ -36,6 +36,7 @@ menu subscription_menu {
       action: "win.show-subscription-info";
     }
   }
+
   section {
     item {
       label: _("_Clear all notifications");
@@ -49,28 +50,33 @@ menu subscription_menu {
   }
 }
 
-template $NtfyrWindow : Adw.ApplicationWindow {
+template $NtfyrWindow: Adw.ApplicationWindow {
   width-request: 360;
   height-request: 360;
+
   Adw.Breakpoint {
     condition ("max-width: 640sp")
+
     setters {
       navigation_split_view.collapsed: true;
     }
   }
+
   Adw.ToastOverlay toast_overlay {
     Adw.NavigationSplitView navigation_split_view {
       sidebar: Adw.NavigationPage {
         title: "Topics";
+
         child: Adw.ToolbarView {
           [top]
           Adw.HeaderBar {
             [start]
             Button {
               icon-name: "list-add-symbolic";
-              tooltip-text: _("Add Topic");
-              clicked => $show_add_topic() swapped;
+              tooltip-text: _("Add Server");
+              clicked => $show_add_server() swapped;
             }
+
             [end]
             MenuButton appmenu_button {
               icon-name: "open-menu-symbolic";
@@ -81,110 +87,156 @@ template $NtfyrWindow : Adw.ApplicationWindow {
           }
 
           Gtk.Stack stack {
-            Adw.StatusPage welcome_view {
-              title: "Ntfyr";
-              description: "Subscribe to one topic and start listening for notifications";
-              child: Gtk.Box {
-                orientation: vertical;
-                spacing: 8;
-                Gtk.Button {
-                  label: "Subscribe To Topic";
-                  clicked => $show_add_topic() swapped;
-                  halign: center;
-                  styles [
-                    "suggested-action",
-                    "pill"
-                  ]
-                }
-                Gtk.Button {
-                  label: "Discover Integrations";
-                  clicked => $discover_integrations() swapped;
-                  halign: center;
-                  styles [
-                    "pill"
-                  ]
-                }
-              };
-            }
             ScrolledWindow list_view {
               propagate-natural-height: true;
+
               ListBox subscription_list {
                 activate-on-single-click: true;
+
                 styles [
-                  "navigation-sidebar"
+                  "navigation-sidebar",
                 ]
               }
             }
           }
         };
       };
+
       content: Adw.NavigationPage {
         title: "Notifications";
-        Adw.ToolbarView subscription_view {
-          [top]
-          Adw.HeaderBar headerbar {
-            [end]
-            MenuButton subscription_menu_btn {
-              icon-name: "view-more-symbolic";
-              menu-model: subscription_menu;
-              tooltip-text: _("Subscription Menu");
-            }
-          }
-          [top]
-          Adw.Banner banner {
-            title: "Reconnecting...";
+
+        Gtk.Stack content_stack {
+          Adw.StatusPage welcome_view {
+            title: "Ntfyr";
+            description: "Subscribe to one topic and start listening for notifications";
+
+            child: Gtk.Box {
+              orientation: vertical;
+              spacing: 8;
+
+              Gtk.Button {
+                label: "Subscribe To Topic";
+                clicked => $show_add_topic() swapped;
+                halign: center;
+
+                styles [
+                  "suggested-action",
+                  "pill",
+                ]
+              }
+
+              Gtk.Button {
+                label: "Discover Integrations";
+                clicked => $discover_integrations() swapped;
+                halign: center;
+
+                styles [
+                  "pill",
+                ]
+              }
+            };
           }
 
-          content: ScrolledWindow message_scroll {
-            propagate-natural-height: true;
-            vexpand: true;
-            Adw.Clamp {
-              ListBox message_list {
-                selection-mode: none;
-                show-separators: true;
-                styles [
-                  "background"
-                ]
+          Adw.ToolbarView subscription_view {
+            [top]
+            Adw.HeaderBar headerbar {
+              [end]
+              MenuButton subscription_menu_btn {
+                icon-name: "view-more-symbolic";
+                menu-model: subscription_menu;
+                tooltip-text: _("Subscription Menu");
               }
             }
-          };
-          [bottom]
-          Adw.Bin {
-            margin-top: 4;
-            margin-bottom: 4;
-            margin-start: 4;
-            margin-end: 4;
-            Adw.Clamp {
-              Gtk.Box {
-                styles [
-                  "message_bar"
-                ]
-                Gtk.Button code_btn {
+
+            [top]
+            Adw.Banner banner {
+              title: "Reconnecting...";
+            }
+
+            content: ScrolledWindow message_scroll {
+              propagate-natural-height: true;
+              vexpand: true;
+
+              Adw.Clamp {
+                ListBox message_list {
+                  selection-mode: none;
+                  show-separators: true;
+
                   styles [
-                    "circular",
-                    "flat"
+                    "background",
                   ]
-                  icon-name: "code-symbolic";
-                  tooltip-text: _("Insert Code Snippet");
                 }
-                Entry entry {
-                  placeholder-text: "Message...";
-                  hexpand: true;
-                }
-                Gtk.Button send_btn {
+              }
+            };
+
+            [bottom]
+            Adw.Bin {
+              margin-top: 4;
+              margin-bottom: 4;
+              margin-start: 4;
+              margin-end: 4;
+
+              Adw.Clamp {
+                Gtk.Box {
                   styles [
-                    "circular",
-                    "suggested-action"
+                    "message_bar",
                   ]
-                  icon-name: "paper-plane-symbolic";
-                  tooltip-text: _("Send Message");
+
+                  Gtk.Button code_btn {
+                    styles [
+                      "circular",
+                      "flat",
+                    ]
+
+                    icon-name: "code-symbolic";
+                    tooltip-text: _("Insert Code Snippet");
+                  }
+
+                  Entry entry {
+                    placeholder-text: "Message...";
+                    hexpand: true;
+                  }
+
+                  Gtk.Button send_btn {
+                    styles [
+                      "circular",
+                      "suggested-action",
+                    ]
+
+                    icon-name: "paper-plane-symbolic";
+                    tooltip-text: _("Send Message");
+                  }
                 }
               }
             }
+          }
+
+          Adw.ToolbarView unified_inbox_view {
+            [top]
+            Adw.HeaderBar {
+              title-widget: Adw.WindowTitle {
+                title: "Unified Inbox";
+              };
+            }
+
+            content: ScrolledWindow unified_message_scroll {
+              propagate-natural-height: true;
+              vexpand: true;
+
+              Adw.Clamp {
+                ListBox unified_message_list {
+                  selection-mode: none;
+                  show-separators: true;
+
+                  styles [
+                    "background",
+                  ]
+                }
+              }
+            };
           }
         }
       };
     }
   }
 }
-

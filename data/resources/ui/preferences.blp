@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $NtfyrPreferences : Adw.PreferencesDialog {
+template $NtfyrPreferences: Adw.PreferencesDialog {
   width-request: 240;
   height-request: 360;
 
@@ -11,6 +11,7 @@ template $NtfyrPreferences : Adw.PreferencesDialog {
 
     Adw.PreferencesGroup {
       title: "General";
+
       Adw.SwitchRow sort_descending_switch {
         title: "Sort descending";
         subtitle: "Newest messages at the top";
@@ -19,49 +20,14 @@ template $NtfyrPreferences : Adw.PreferencesDialog {
 
     Adw.PreferencesGroup {
       title: "System";
+
       Adw.SwitchRow startup_switch {
         title: "Run on Startup";
       }
+
       Adw.SwitchRow startup_background_switch {
         title: "Start in Background";
         subtitle: "Start the application in the tray instead of showing the window";
-      }
-    }
-
-
-
-    Adw.PreferencesGroup {
-      title: "Servers";
-
-
-      [header-suffix]
-      Gtk.Button add_server_btn {
-        icon-name: "list-add-symbolic";
-        styles ["flat"]
-        valign: center;
-        tooltip-text: _("Add Server");
-      }
-
-      Gtk.ListBox added_servers {
-        styles ["boxed-list"]
-        selection-mode: none;
-      }
-    }
-
-    Adw.PreferencesGroup {
-      title: "Accounts";
-
-      [header-suffix]
-      Gtk.Button add_account_btn {
-        icon-name: "contact-new-symbolic";
-        styles ["flat"]
-        valign: center;
-        tooltip-text: _("Add Account");
-      }
-
-      Gtk.ListBox added_accounts {
-        styles ["boxed-list"]
-        selection-mode: none;
       }
     }
   }

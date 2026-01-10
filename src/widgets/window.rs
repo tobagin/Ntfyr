@@ -3,6 +3,7 @@ use std::cell::OnceCell;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+
 use gtk::{gio, glib};
 use ntfy_daemon::models;
 use ntfy_daemon::NtfyHandle;
@@ -52,11 +53,21 @@ mod imp {
         pub send_btn: TemplateChild<gtk::Button>,
         #[template_child]
         pub code_btn: TemplateChild<gtk::Button>,
+        
+        // Unified Inbox
+        #[template_child]
+        pub content_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub unified_inbox_view: TemplateChild<adw::ToolbarView>,
+        #[template_child]
+        pub unified_message_list: TemplateChild<gtk::ListBox>,
+
         pub notifier: OnceCell<NtfyHandle>,
         pub conn: OnceCell<gio::SocketConnection>,
         pub settings: gio::Settings,
         pub banner_binding: Cell<Option<(Subscription, glib::SignalHandlerId)>>,
         pub subscription_sorter: OnceCell<gtk::CustomSorter>,
+        pub subscription_sort_model: OnceCell<gtk::SortListModel>,
     }
 
     impl Default for NtfyrWindow {
@@ -75,6 +86,9 @@ mod imp {
                 list_view: Default::default(),
                 message_scroll: Default::default(),
                 banner: Default::default(),
+               content_stack: Default::default(),
+                unified_inbox_view: Default::default(),
+                unified_message_list: Default::default(),
                 subscription_list_model: gio::ListStore::new::<Subscription>(),
                 settings: gio::Settings::new(APP_ID),
                 notifier: Default::default(),
@@ -83,6 +97,7 @@ mod imp {
                 send_btn: Default::default(),
                 code_btn: Default::default(),
                 subscription_sorter: Default::default(),
+                subscription_sort_model: Default::default(),
             };
 
             this
@@ -94,8 +109,12 @@ mod imp {
         #[template_callback]
         fn show_add_topic(&self, _btn: &gtk::Button) {
             let this = self.obj().clone();
-            let dialog =
-                AddSubscriptionDialog::new(this.selected_subscription().map(|x| x.server()));
+            let settings = gio::Settings::new(crate::config::APP_ID);
+            let default_server = settings.string("default-server");
+            let server = this.selected_subscription()
+                .map(|x| x.server())
+                .unwrap_or(default_server.to_string());
+            let dialog = AddSubscriptionDialog::new(server);
             dialog.present(Some(&self.obj().clone()));
 
             let dc = dialog.clone();
@@ -111,6 +130,10 @@ mod imp {
                 dc.close();
                 None
             });
+        }
+        #[template_callback]
+        fn show_add_server(&self, _btn: &gtk::Button) {
+            self.obj().on_add_server_clicked();
         }
         #[template_callback]
         fn discover_integrations(&self, _btn: &gtk::Button) {
@@ -205,11 +228,13 @@ impl NtfyrWindow {
 
         // Load latest window state
         obj.load_window_size();
+        
         obj.bind_message_list();
         obj.connect_entry_and_send_btn();
         obj.connect_code_btn();
         obj.connect_items_changed();
         obj.connect_settings_changed();
+        obj.connect_server_changes();
         obj.selected_subscription_changed(None);
         obj.bind_flag_read();
 
@@ -260,10 +285,11 @@ impl NtfyrWindow {
             .subscription_list_model
             .connect_items_changed(move |list, _, _, _| {
                 let imp = this.imp();
+                // Content stack: show welcome_view if no topics, otherwise show subscription_view
                 if list.n_items() == 0 {
-                    imp.stack.set_visible_child(&*imp.welcome_view);
+                    imp.content_stack.set_visible_child(&*imp.welcome_view);
                 } else {
-                    imp.stack.set_visible_child(&*imp.list_view);
+                    imp.content_stack.set_visible_child(&*imp.subscription_view);
                 }
             });
     }
@@ -273,6 +299,19 @@ impl NtfyrWindow {
         let this = self.clone();
         settings.connect_changed(Some("sort-descending"), move |_, _| {
             this.selected_subscription_changed(this.selected_subscription().as_ref());
+        });
+    }
+
+    fn connect_server_changes(&self) {
+        let settings = &self.imp().settings;
+        let this = self.clone();
+        settings.connect_changed(Some("custom-servers"), move |_, _| {
+            // Trigger a re-sort when servers change
+            if let Some(sorter) = this.imp().subscription_sorter.get() {
+                sorter.changed(gtk::SorterChange::Different);
+            }
+            // Rebuild the list to show new/removed servers
+            this.rebuild_subscription_list();
         });
     }
 
@@ -289,37 +328,44 @@ impl NtfyrWindow {
             this.attach_sort_trigger(&subscription);
             
             imp.subscription_list_model.append(&subscription);
-            let i = imp.subscription_list_model.n_items() - 1;
-            let row = imp.subscription_list.row_at_index(i as i32);
-            imp.subscription_list.select_row(row.as_ref());
-            if let Some(row) = row {
-                row.activate();
-            }
+            
+            // Wait for info to load
+            glib::timeout_future_seconds(1).await;
+            
+            // Rebuild the UI list
+            this.rebuild_subscription_list();
+            
+            // TODO: Select the newly added subscription? 
+            // For now let's just ensure it appears.
+            
             Ok(())
         });
     }
 
     fn unsubscribe(&self) {
-        let sub = self.selected_subscription().unwrap();
+        let Some(sub) = self.selected_subscription() else {
+            return;
+        };
 
         let this = self.clone();
         self.error_boundary().spawn(async move {
-            this.notifier()
+            if let Err(e) = this.notifier()
                 .unsubscribe(sub.server().as_str(), sub.topic().as_str())
-                .await?;
+                .await 
+            {
+                warn!("Failed to unsubscribe from backend: {}", e);
+            }
 
             let imp = this.imp();
             if let Some(i) = imp.subscription_list_model.find(&sub) {
                 imp.subscription_list_model.remove(i);
-
+                
+                // Rebuild the UI list
+                this.rebuild_subscription_list();
+                
+                // Clear selection if needed
                 let n_items = imp.subscription_list_model.n_items();
-                if n_items > 0 {
-                    let new_index = if i < n_items { i } else { n_items - 1 };
-                    if let Some(row) = imp.subscription_list.row_at_index(new_index as i32) {
-                        imp.subscription_list.select_row(Some(&row));
-                        row.activate();
-                    }
-                } else {
+                if n_items == 0 {
                     this.selected_subscription_changed(None);
                 }
             }
@@ -331,13 +377,67 @@ impl NtfyrWindow {
     }
     fn selected_subscription(&self) -> Option<Subscription> {
         let imp = self.imp();
-        imp.subscription_list
-            .selected_row()
-            .and_then(|row| imp.subscription_list_model.item(row.index() as u32))
-            .and_downcast::<Subscription>()
+        let row = imp.subscription_list.selected_row()?;
+        
+        // Get topic and server from the row data
+        let topic = unsafe { row.data::<String>("topic")?.as_ref().clone() };
+        let server = unsafe { row.data::<String>("server")?.as_ref().clone() };
+        
+        // Find the matching subscription in the model
+        if let Some(sort_model) = imp.subscription_sort_model.get() {
+            for i in 0..sort_model.n_items() {
+                if let Some(sub) = sort_model.item(i).and_downcast::<Subscription>() {
+                    if sub.topic() == topic && sub.server() == server {
+                        return Some(sub);
+                    }
+                }
+            }
+        }
+        None
     }
+    fn bind_unified_inbox(&self) {
+        let imp = self.imp();
+        let map_model = gtk::MapListModel::new(Some(imp.subscription_list_model.clone()), |item| {
+            let sub = item.downcast_ref::<Subscription>().unwrap();
+            println!("UnifiedInbox: Mapping subscription {}", sub.topic());
+            sub.imp().messages.clone().upcast::<glib::Object>()
+        });
+        
+        let flatten_model = gtk::FlattenListModel::new(Some(map_model));
+        
+        let sort_descending = imp.settings.boolean("sort-descending");
+        let sorter = gtk::CustomSorter::new(move |a, b| {
+                let a = a.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+                let a = a.borrow::<models::ReceivedMessage>();
+                let b = b.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+                let b = b.borrow::<models::ReceivedMessage>();
+
+                let time_a = a.time;
+                let time_b = b.time;
+
+                if sort_descending {
+                    time_b.cmp(&time_a).into()
+                } else {
+                    time_a.cmp(&time_b).into()
+                }
+        });
+
+        let sorter: gtk::Sorter = sorter.upcast(); 
+        let sort_model = gtk::SortListModel::new(Some(flatten_model), Some(sorter));
+        
+        imp.unified_message_list.bind_model(Some(&sort_model), |obj| {
+             let b = obj.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+             let msg = b.borrow::<models::ReceivedMessage>();
+             MessageRow::new(msg.clone()).upcast()
+        });
+        
+        // Unified inbox selection is handled in subscription_list row_activated
+    }
+
     fn bind_message_list(&self) {
         let imp = self.imp();
+        
+        self.bind_unified_inbox();
 
         let sorter = gtk::CustomSorter::new(|a, b| {
             let a = a.downcast_ref::<Subscription>().unwrap();
@@ -357,75 +457,55 @@ impl NtfyrWindow {
         imp.subscription_sorter.set(sorter.clone()).unwrap();
 
         let sort_model = gtk::SortListModel::new(Some(imp.subscription_list_model.clone()), Some(sorter));
+        let _ = imp.subscription_sort_model.set(sort_model.clone());
 
-        imp.subscription_list
-            .bind_model(Some(&sort_model), |obj| {
-                let sub = obj.downcast_ref::<Subscription>().unwrap();
-                Self::build_subscription_row(&sub).upcast()
-            });
+        // NO header function - we create a flat list with server ActionRows directly
         
-        imp.subscription_list.set_header_func(|row, before| {
-             let current_server = unsafe { 
-                 row.data::<String>("server_url").map(|s| s.as_ref().to_string()).unwrap_or_default()
-             };
-             
-             if let Some(before) = before {
-                  let before_server = unsafe { 
-                      before.data::<String>("server_url").map(|s| s.as_ref().to_string()).unwrap_or_default()
-                  };
-                  
-                  if current_server == before_server {
-                       row.set_header(gtk::Widget::NONE);
-                       return;
-                  }
-             }
-
-             if current_server.is_empty() {
-                 row.set_header(gtk::Widget::NONE);
-                 return;
-             }
-             
-             // Create header
-             let server = current_server;
-             
-             let box_ = gtk::Box::builder()
-                 .orientation(gtk::Orientation::Horizontal)
-                 .spacing(6)
-                 .margin_top(12)
-                 .margin_bottom(6)
-                 .margin_start(12)
-                 .margin_end(12)
-                 .build();
-             
-             let icon_name = if server == "https://ntfy.sh" {
-                  "io.github.tobagin.Ntfyr-ntfy-symbolic"
-             } else {
-                  "network-server-symbolic"
-             };
-             
-             let icon = gtk::Image::builder()
-                 .icon_name(icon_name)
-                 .pixel_size(16)
-                 .build();
-             icon.set_opacity(0.7);
-                 
-             let label = gtk::Label::builder()
-                 .label(&server)
-                 .css_classes(vec!["caption", "dim-label"])
-                 .halign(gtk::Align::Start)
-                 .build();
-                 
-             box_.append(&icon);
-             box_.append(&label);
-             
-             row.set_header(Some(&box_));
-        });
-
         let this = self.clone();
-        imp.subscription_list.connect_row_activated(move |_, _row| {
-            this.selected_subscription_changed(this.selected_subscription().as_ref());
+        imp.subscription_list.connect_row_activated(move |_list, row| {
+            let imp = this.imp();
+            
+            // Check if unified inbox row
+            let is_inbox = unsafe { row.data::<bool>("unified-inbox").is_some() };
+            if is_inbox {
+                this.selected_subscription_changed(None);
+                imp.content_stack.set_visible_child(&*imp.unified_inbox_view);
+                imp.navigation_split_view.set_show_content(true);
+                return;
+            }
+            
+            // Check if server row or placeholder - ignore these
+            let is_server = unsafe { row.data::<bool>("server-row").is_some() };
+            let is_placeholder = unsafe { row.data::<bool>("placeholder").is_some() };
+            if is_server || is_placeholder {
+                return;
+            }
+            
+            // Topic row - find the subscription by topic+server
+            let topic = unsafe { row.data::<String>("topic").map(|s| s.as_ref().clone()) };
+            let server = unsafe { row.data::<String>("server").map(|s| s.as_ref().clone()) };
+            
+            if let (Some(topic), Some(server)) = (topic, server) {
+                // Find the subscription in the model
+                if let Some(sort_model) = imp.subscription_sort_model.get() {
+                    for i in 0..sort_model.n_items() {
+                        if let Some(sub) = sort_model.item(i).and_downcast::<Subscription>() {
+                            if sub.topic() == topic && sub.server() == server {
+                                this.selected_subscription_changed(Some(&sub));
+                                imp.content_stack.set_visible_child(&*imp.subscription_view);
+                                imp.navigation_split_view.set_show_content(true);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
         });
 
+        // Initial population (empty servers only at first)
+        self.rebuild_subscription_list();
+        
+        // Load subscriptions asynchronously
         let this = self.clone();
         self.error_boundary().spawn(async move {
             glib::timeout_future_seconds(1).await;
@@ -433,13 +513,275 @@ impl NtfyrWindow {
             for sub in list {
                 let sub = Subscription::new(sub);
                 this.attach_sort_trigger(&sub);
-                this.imp()
-                    .subscription_list_model
-                    .append(&sub);
+                this.imp().subscription_list_model.append(&sub);
             }
-            Ok(())
+            // Wait a bit for subscriptions to load their info (async)
+            glib::timeout_future_seconds(1).await;
+            // Rebuild list with actual subscriptions
+            this.rebuild_subscription_list();
+            Ok::<_, anyhow::Error>(())
         });
     }
+
+    fn rebuild_subscription_list(&self) {
+        let imp = self.imp();
+        let list = &imp.subscription_list;
+        
+        // Clear existing rows
+        while let Some(child) = list.first_child() {
+            list.remove(&child.downcast::<gtk::ListBoxRow>().unwrap());
+        }
+        
+        // 1. Unified Inbox - ActionRow directly in ListBox (ActionRow IS a ListBoxRow)
+        let inbox = adw::ActionRow::builder()
+            .subtitle("Unified Inbox")
+            .icon_name("mail-read-symbolic")
+            .activatable(true)
+            .build();
+        unsafe { inbox.set_data("unified-inbox", true); }
+        list.append(&inbox);
+        
+        // Get all servers (ntfy.sh + custom servers)
+        let settings = gio::Settings::new(crate::config::APP_ID);
+        let mut all_servers = vec!["https://ntfy.sh".to_string()];
+        all_servers.extend(
+            settings.strv("custom-servers")
+                .into_iter()
+                .map(|s| s.to_string())
+        );
+        
+        // Group subscriptions by server
+        let mut subs_by_server: std::collections::HashMap<String, Vec<Subscription>> = std::collections::HashMap::new();
+        if let Some(sort_model) = imp.subscription_sort_model.get() {
+            for i in 0..sort_model.n_items() {
+                if let Some(sub) = sort_model.item(i).and_downcast::<Subscription>() {
+                    subs_by_server
+                        .entry(sub.server())
+                        .or_insert_with(Vec::new)
+                        .push(sub);
+                }
+            }
+        }
+        
+        // 2. For each server: server ActionRow, then topics or placeholder
+        for server in &all_servers {
+            // Server ActionRow - directly in ListBox
+            let server_row = self.build_server_action_row(server);
+            list.append(&server_row);
+            
+            // Topics or placeholder
+            if let Some(subs) = subs_by_server.get(server) {
+                for sub in subs {
+                    let topic_row = Self::build_topic_action_row(sub);
+                    list.append(&topic_row);
+                }
+            } else {
+                let placeholder = self.build_placeholder_action_row();
+                list.append(&placeholder);
+            }
+        }
+    }
+
+    fn build_server_action_row(&self, server: &str) -> adw::ActionRow {
+        let icon_name = if server == "https://ntfy.sh" {
+            "io.github.tobagin.Ntfyr-ntfy-symbolic"
+        } else {
+            "network-server-symbolic"
+        };
+        
+        // Adw.ActionRow { subtitle, icon-name, selectable: false, styles ["background"] }
+        let action_row = adw::ActionRow::builder()
+            .subtitle(server)
+            .icon_name(icon_name)
+            .selectable(false)
+            .build();
+        action_row.add_css_class("background");
+        
+        // Gtk.Box { hexpand: true; halign: end; styles ["linked"] }
+        let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        button_box.set_hexpand(true);
+        button_box.set_halign(gtk::Align::End);
+        button_box.add_css_class("linked");
+        
+        // MenuButton { icon-name: view-more-symbolic, tooltip: Server Actions, flat }
+        let menu_btn = gtk::MenuButton::builder()
+            .icon_name("view-more-symbolic")
+            .tooltip_text("Server Actions")
+            .valign(gtk::Align::Center)
+            .build();
+        menu_btn.add_css_class("flat");
+
+        let popover = gtk::Popover::new();
+        let menu_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        menu_box.add_css_class("boxed-list");
+        menu_box.set_margin_top(6);
+        menu_box.set_margin_bottom(6);
+        menu_box.set_margin_start(6);
+        menu_box.set_margin_end(6);
+        menu_box.set_spacing(0); // Connected list look
+
+        // Helper to create styled menu rows
+        let create_menu_row = |label: &str, icon_name: &str| -> gtk::Button {
+            let btn = gtk::Button::builder()
+                .halign(gtk::Align::Fill)
+                .build();
+            btn.add_css_class("flat");
+            
+            let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+            let icon = gtk::Image::from_icon_name(icon_name);
+            let lbl = gtk::Label::builder()
+                .label(label)
+                .xalign(0.0)
+                .hexpand(true)
+                .build();
+            
+            box_.append(&icon);
+            box_.append(&lbl);
+            btn.set_child(Some(&box_));
+            btn
+        };
+
+        // Add Topic Item
+        let add_topic_btn = create_menu_row("Add Topic", "list-add-symbolic");
+        let server_clone = server.to_string();
+        let popover_clone = popover.clone();
+        add_topic_btn.connect_clicked(move |btn| {
+            popover_clone.popdown();
+            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                window.show_add_topic_for_server(&server_clone);
+            }
+        });
+        menu_box.append(&add_topic_btn);
+
+        // Add Account Item
+        let add_account_btn = create_menu_row("Add Account", "contact-new-symbolic");
+        let server_clone = server.to_string();
+        let popover_clone = popover.clone();
+        add_account_btn.connect_clicked(move |btn| {
+            popover_clone.popdown();
+            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                window.on_add_account_clicked(&server_clone);
+            }
+        });
+        menu_box.append(&add_account_btn);
+
+        // Remove Server Item (only custom)
+        if server != "https://ntfy.sh" {
+            let remove_btn = create_menu_row("Remove Server", "user-trash-symbolic");
+            remove_btn.add_css_class("destructive-action");
+
+            let server_clone = server.to_string();
+            let popover_clone = popover.clone();
+            remove_btn.connect_clicked(move |btn| {
+                popover_clone.popdown();
+                if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                    window.on_remove_server_clicked(&server_clone);
+                }
+            });
+            menu_box.append(&remove_btn);
+        }
+
+        popover.set_child(Some(&menu_box));
+        menu_btn.set_popover(Some(&popover));
+        button_box.append(&menu_btn);
+        
+        action_row.add_suffix(&button_box);
+        unsafe { action_row.set_data("server-row", true); }
+        action_row
+    }
+
+    fn build_placeholder_action_row(&self) -> adw::ActionRow {
+        // Adw.ActionRow { subtitle, icon-name, selectable: false }
+        let action_row = adw::ActionRow::builder()
+            .subtitle("no topics added")
+            .icon_name("mail-mark-important-symbolic")
+            .selectable(false)
+            .build();
+        unsafe { action_row.set_data("placeholder", true); }
+        action_row
+    }
+
+    fn build_empty_server_row(&self, server: &str) -> gtk::ListBoxRow {
+        let icon_name = if server == "https://ntfy.sh" {
+            "io.github.tobagin.Ntfyr-ntfy-symbolic"
+        } else {
+            "network-server-symbolic"
+        };
+        
+        let action_row = adw::ActionRow::builder()
+            .title(server)
+            .subtitle("No topics added, add your first topic")
+            .icon_name(icon_name)
+            .activatable(false)
+            .build();
+        
+        // Create linked button group
+        let button_box = gtk::Box::builder()
+            .orientation(gtk::Orientation::Horizontal)
+            .spacing(0)
+            .valign(gtk::Align::Center)
+            .build();
+        button_box.add_css_class("linked");
+        
+        // Add Topic button
+        let add_topic_btn = gtk::Button::builder()
+            .icon_name("list-add-symbolic")
+            .tooltip_text("Add Topic")
+            .build();
+        
+        let server_clone = server.to_string();
+        add_topic_btn.connect_clicked(move |btn| {
+            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                window.show_add_topic_for_server(&server_clone);
+            }
+        });
+        button_box.append(&add_topic_btn);
+        
+        // Add Account button
+        let add_account_btn = gtk::Button::builder()
+            .icon_name("contact-new-symbolic")
+            .tooltip_text("Add Account")
+            .build();
+        
+        let server_clone = server.to_string();
+        add_account_btn.connect_clicked(move |btn| {
+            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                let server = server_clone.clone();
+                btn.error_boundary().spawn(async move {
+                    window.on_add_account_clicked(&server).await
+                });
+            }
+        });
+        button_box.append(&add_account_btn);
+        
+        // Remove Server button (only for custom servers, not ntfy.sh)
+        if server != "https://ntfy.sh" {
+            let remove_server_btn = gtk::Button::builder()
+                .icon_name("user-trash-symbolic")
+                .tooltip_text("Remove Server")
+                .build();
+            remove_server_btn.add_css_class("destructive-action");
+            
+            let server_clone = server.to_string();
+            remove_server_btn.connect_clicked(move |btn| {
+                if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                    window.on_remove_server_clicked(&server_clone);
+                }
+            });
+            button_box.append(&remove_server_btn);
+        }
+        
+        action_row.add_suffix(&button_box);
+        
+        let row = gtk::ListBoxRow::builder()
+            .activatable(false)
+            .selectable(false)
+            .build();
+        row.set_child(Some(&action_row));
+        unsafe { row.set_data("empty-server", true); }
+        row
+    }
+
 
     fn attach_sort_trigger(&self, sub: &Subscription) {
         let imp = self.imp();
@@ -538,87 +880,89 @@ impl NtfyrWindow {
             });
         }
     }
-    fn build_chip(text: &str) -> gtk::Label {
-        let chip = gtk::Label::new(Some(text));
-        chip.add_css_class("chip");
-        chip.add_css_class("chip--small");
-        chip.set_margin_top(4);
-        chip.set_margin_bottom(4);
-        chip.set_margin_start(4);
-        chip.set_margin_end(4);
-        chip.set_halign(gtk::Align::Center);
-        chip.set_valign(gtk::Align::Center);
-        chip
-    }
 
-    fn build_subscription_row(sub: &Subscription) -> gtk::ListBoxRow {
-        let row = gtk::ListBoxRow::new();
-        let b = gtk::Box::builder().spacing(4).build();
-
-        let label = gtk::Label::builder()
-            .xalign(0.0)
-            .wrap_mode(gtk::pango::WrapMode::WordChar)
-            .wrap(true)
-            .hexpand(true)
-            .build();
-
-        sub.bind_property("display-name", &label, "label")
-            .sync_create()
-            .build();
-
-        let counter_chip = Self::build_chip("●");
-        counter_chip.add_css_class("chip--info");
-        counter_chip.add_css_class("circular");
-        counter_chip.set_visible(false);
-        let counter_chip_clone = counter_chip.clone();
-        sub.connect_unread_count_notify(move |sub| {
-            let c = sub.unread_count();
-            counter_chip_clone.set_visible(c > 0);
-        });
-
-        let status_chip = Self::build_chip("Degraded");
-        let status_chip_clone = status_chip.clone();
-
-        sub.connect_status_notify(move |sub| match sub.nice_status() {
-            Status::Degraded | Status::Down => {
-                status_chip_clone.add_css_class("chip--degraded");
-                status_chip_clone.set_visible(true);
-            }
-            _ => {
-                status_chip_clone.set_visible(false);
-            }
-        });
-
-        let muted_icon = gtk::Image::builder()
-            .icon_name("notifications-disabled-symbolic")
-            .visible(false)
+    fn build_topic_action_row(sub: &Subscription) -> adw::ActionRow {
+        // Adw.ActionRow { title, icon-name, Gtk.Box { icons } }
+        let action_row = adw::ActionRow::builder()
+            .icon_name("lang-include-symbolic")
+            .activatable(true)
             .build();
         
-        sub.bind_property("muted", &muted_icon, "visible")
+        // Bind title to display-name
+        sub.bind_property("display-name", &action_row, "title")
             .sync_create()
             .build();
+        
+        // Gtk.Box { icons }
+        let icon_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
-        b.append(&counter_chip);
-        b.append(&label);
-        b.append(&muted_icon);
-        b.append(&status_chip);
+        // Gtk.Image { icon-name: "alarm-symbolic" } - schedule
+        let schedule = gtk::Image::new();
+        schedule.set_icon_name(Some("alarm-symbolic"));
+        schedule.set_visible(false);
+        sub.bind_property("has-schedule", &schedule, "visible").sync_create().build();
+        icon_box.append(&schedule);
 
-        row.set_child(Some(&b));
+        // Gtk.Image { icon-name: "edit-find-replace-symbolic" } - filters
+        let filter = gtk::Image::new();
+        filter.set_icon_name(Some("edit-find-replace-symbolic"));
+        filter.set_visible(false);
+        sub.bind_property("has-rules", &filter, "visible").sync_create().build();
+        icon_box.append(&filter);
 
-        // Set initial data
-        unsafe {
-            row.set_data("server_url", sub.server());
-        }
-
-        let row_clone = row.clone();
-        sub.connect_notify_local(Some("server"), move |sub, _| {
-            unsafe {
-                row_clone.set_data("server_url", sub.server());
-            }
-            row_clone.changed();
+        // Gtk.Image { network-error-symbolic / network-cellular-signal-weak-symbolic } - status
+        let status = gtk::Image::new();
+        status.set_visible(false);
+        let status_clone = status.clone();
+        sub.connect_status_notify(move |sub| match sub.nice_status() {
+             Status::Down => {
+                 status_clone.set_icon_name(Some("network-error-symbolic"));
+                 status_clone.set_visible(true);
+             }
+             Status::Degraded => {
+                 status_clone.set_icon_name(Some("network-cellular-signal-weak-symbolic"));
+                 status_clone.set_visible(true);
+             }
+             _ => status_clone.set_visible(false),
         });
+        icon_box.append(&status);
 
-        row
+        // Gtk.Image { icon-name: "notifications-disabled-symbolic" } - muted
+        let muted = gtk::Image::new();
+        muted.set_icon_name(Some("notifications-disabled-symbolic"));
+        muted.set_visible(false);
+        sub.bind_property("muted", &muted, "visible").sync_create().build();
+        icon_box.append(&muted);
+
+        // Gtk.Image { icon-name: "channel-secure-symbolic" } - reserved
+        let reserved = gtk::Image::new();
+        reserved.set_icon_name(Some("channel-secure-symbolic"));
+        reserved.set_visible(false);
+        sub.bind_property("reserved", &reserved, "visible").sync_create().build();
+        icon_box.append(&reserved);
+
+        // Gtk.Label { valign: center; margin-start: 5; label } - unread count
+        let badge = gtk::Label::new(None);
+        badge.set_valign(gtk::Align::Center);
+        badge.set_margin_start(5);
+        badge.set_visible(false);
+        let badge_clone = badge.clone();
+        sub.connect_unread_count_notify(move |sub| {
+             let c = sub.unread_count();
+             badge_clone.set_label(&c.to_string());
+             badge_clone.set_visible(c > 0);
+        });
+        icon_box.append(&badge);
+
+        action_row.add_suffix(&icon_box);
+        
+        // Store topic and server for lookup when clicked
+        unsafe { 
+            action_row.set_data("topic", sub.topic());
+            action_row.set_data("server", sub.server());
+        }
+        
+        action_row
     }
 
     pub fn save_window_size(&self) -> Result<(), glib::BoolError> {
@@ -664,4 +1008,142 @@ impl NtfyrWindow {
             self.maximize();
         }
     }
+
+    // Server Management Methods
+    pub fn on_add_server_clicked(&self) {
+        let dialog = AddServerDialog::new();
+        dialog.present(Some(self));
+        
+        let this = self.clone();
+        let dialog_clone = dialog.clone();
+        dialog.connect_local("add-request", true, move |_| {
+             let url = dialog_clone.server_url();
+             
+             // Check if server already exists
+             let settings = gio::Settings::new(crate::config::APP_ID);
+             let mut servers: Vec<String> = settings.strv("custom-servers").into_iter().map(|s| s.to_string()).collect();
+             
+             if !servers.contains(&url) && url != "https://ntfy.sh" {
+                 servers.push(url);
+                 let _ = settings.set_strv("custom-servers", servers.iter().map(|s| s.as_str()).collect::<Vec<&str>>().as_slice());
+                 
+                 let toast = adw::Toast::new("Server added successfully");
+                 this.imp().toast_overlay.add_toast(toast);
+             } else if servers.contains(&url) {
+                  let toast = adw::Toast::new("Server already exists");
+                  this.imp().toast_overlay.add_toast(toast);
+             }
+             
+             dialog_clone.close();
+             None
+        });
+    }
+
+    async fn validate_ntfy_server(&self, url: &str) -> anyhow::Result<bool> {
+        // Basic URL validation
+        if !url.starts_with("http://") && !url.starts_with("https://") {
+            return Ok(false);
+        }
+        
+        // Try to make a simple request to check if server is reachable
+        let health_url = format!("{}/v1/health", url.trim_end_matches('/'));
+        let url_clone = url.to_string();
+        
+        let result = tokio::task::spawn_blocking(move || {
+            let agent = ureq::Agent::new_with_config(Default::default());
+            
+            // Try health endpoint first (most ntfy servers have this)
+            if let Ok(_) = agent.get(&health_url).call() {
+                return true;
+            }
+            
+            // Fallback: try root endpoint - if it responds at all, consider it valid
+            if let Ok(_) = agent.get(&url_clone).call() {
+                return true;
+            }
+            
+            false
+        }).await?;
+        
+        Ok(result)
+    }
+
+    pub fn on_remove_server_clicked(&self, server: &str) {
+        let server = server.to_string();
+        let this = self.clone();
+        let dialog = adw::AlertDialog::builder()
+            .heading("Remove Server?")
+            .body(format!("Are you sure you want to remove {}?\n\nAll subscriptions for this server will also be removed.", server))
+            .build();
+        dialog.add_response("cancel", "Cancel");
+        dialog.add_response("remove", "Remove");
+        dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
+        dialog.set_default_response(Some("cancel"));
+        dialog.set_close_response("cancel");
+
+        dialog.choose(Some(self), gio::Cancellable::NONE, move |result| {
+            if result == "remove" {
+                this.remove_server(&server);
+            }
+        });
+    }
+
+    pub fn remove_server(&self, server: &str) {
+        let settings = gio::Settings::new(crate::config::APP_ID);
+        let mut servers: Vec<String> = settings.strv("custom-servers").into_iter().map(|s| s.to_string()).collect();
+        servers.retain(|s| s != server);
+        let _ = settings.set_strv("custom-servers", servers.iter().map(|s| s.as_str()).collect::<Vec<&str>>().as_slice());
+    }
+
+    pub fn show_add_topic_for_server(&self, server: &str) {
+        let dialog = AddSubscriptionDialog::new(server.to_string());
+        dialog.present(Some(self));
+
+        let this = self.clone();
+        let dc = dialog.clone();
+        dialog.connect_local("subscribe-request", true, move |_| {
+            let sub = match dc.subscription() {
+                Ok(sub) => sub,
+                Err(e) => {
+                    warn!(errors = ?e, "trying to add invalid subscription");
+                    return None;
+                }
+            };
+            this.add_subscription(sub);
+            dc.close();
+            None
+        });
+    }
+
+    pub async fn on_add_account_clicked(&self, server: &str) -> anyhow::Result<()> {
+        let dialog = NtfyrAccountDialog::new(server.to_string());
+        dialog.set_title("Add Account");
+        
+        // Remove obsolete pre-selection logic
+        
+        let (sender, receiver) = async_channel::bounded(1);
+        dialog.connect_closure(
+            "save",
+            false,
+            glib::closure_local!(move |_dialog: NtfyrAccountDialog| {
+                let _ = sender.send_blocking(());
+            }),
+        );
+
+        dialog.present(Some(self));
+
+        if let Ok(()) = receiver.recv().await {
+            let (server, username, password) = dialog.account_data();
+            let n = self.notifier();
+            n.add_account(&server, &username, &password).await?;
+            
+            let toast = adw::Toast::new("Account added successfully");
+            self.imp().toast_overlay.add_toast(toast);
+        }
+
+        Ok(())
+    }
+
+
+
 }

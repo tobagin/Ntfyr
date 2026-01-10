@@ -1,7 +1,7 @@
 project(
   'ntfyr',
   'rust',
-  version: '0.1.2',
+  version: '0.1.3',
   meson_version: '>= 0.59',
   # license: 'MIT',
 )

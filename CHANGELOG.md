@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-01-10
+
+### Added
+
+- **Filter Rules**: Added ability to filter notifications based on rules.
+- **Filter Dialog**: New dialog to create and manage filter rules.
+
+### Changed
+
+- **Unified Dialogs**: Refactored "Add Server" and "Add Account" dialogs to match the "Add Topic" aesthetic.
+- **Server Actions**: Improved server actions menu with `GtkMenuButton` and better styling.
+- **UI Polish**: Various visual improvements to dialogs and menus.
+
+### Fixed
+
+- **Muted Icon**: Muted subscriptions now correctly show a muted icon in the topic list.
+- **Database Migrations**: Fixed issues with database migrations.
+
+
 ## [0.1.2] - 2026-01-06
 
 ### Changed
