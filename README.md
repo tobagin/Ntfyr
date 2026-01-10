@@ -4,9 +4,9 @@ A native ntfy.sh client for the GNOME Desktop.
 
 ![Ntfyr Application](data/screenshots/main-window.png)
 
-## 🎉 Version 0.1.3 - Latest Release
+## 🎉 Version 0.2.0 - Latest Release
 
-**Ntfyr 0.1.3** brings new filtering capabilities and UI refinements for a smoother experience.
+**Ntfyr 0.2.0** brings new filtering capabilities and UI refinements for a smoother experience.
 
 ### ✨ Key Features
 
@@ -17,7 +17,7 @@ A native ntfy.sh client for the GNOME Desktop.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organization
 - **🛡️ Privacy Focused**: Full support for self-hosted instances
 
-### 🆕 What's New in 0.1.3
+### 🆕 What's New in 0.2.0
 
 - **Filter Rules**: Create rules to filter notifications based on specific criteria.
 - **Unified UI**: Consistent aesthetics across all dialogs (Add Server, Add Account, Add Topic).
