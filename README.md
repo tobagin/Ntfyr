@@ -48,10 +48,7 @@ For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md)
 
 ### Flatpak (Recommended)
 
-#### From Flathub
-```bash
-flatpak install flathub io.github.tobagin.Ntfyr
-```
+[![Get it on Flathub](https://flathub.org/api/badge)](https://flathub.org/en/apps/io.github.tobagin.Ntfyr)
 
 #### Development Version
 ```bash
