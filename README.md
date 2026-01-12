@@ -51,13 +51,8 @@ For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md)
 - **Local History**: Notifications are cached locally for offline viewing.
 - **No Telemetry**: Your data stays on your machine.
 
-## Installation
+## Building from Source
 
-### Flatpak (Recommended)
-
-[![Get it on Flathub](https://flathub.org/api/badge)](https://flathub.org/en/apps/io.github.tobagin.Ntfyr)
-
-#### Development Version
 ```bash
 # Clone the repository
 git clone https://github.com/tobagin/Ntfyr.git
