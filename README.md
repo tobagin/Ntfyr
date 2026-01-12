@@ -59,8 +59,7 @@ git clone https://github.com/tobagin/Ntfyr.git
 cd Ntfyr
 
 # Build and install development version
-flatpak-builder --user --install --force-clean build packaging/io.github.tobagin.Ntfyr.Devel.yml
-flatpak run io.github.tobagin.Ntfyr.Devel
+./build.sh --dev
 ```
 
 ## Usage
