@@ -11,9 +11,9 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.2.0 - Latest Release
+## 🎉 Version 0.2.1 - Latest Release
 
-**Ntfyr 0.2.0** brings new filtering capabilities and UI refinements for a smoother experience.
+**Ntfyr 0.2.1** brings metadata improvements and documentation updates.
 
 ### ✨ Key Features
 
@@ -23,6 +23,11 @@ A native ntfy.sh client for the GNOME Desktop.
 - **📂 Attachments**: View images and download files directly within the app.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organization.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
+
+### 🆕 What's New in 0.2.1
+
+- **Metadata Improvements**: Verified and improved metainfo validation (summary, description, branding).
+- **Documentation**: Simplified README, added Flathub/Ko-Fi badges, and improved build instructions.
 
 ### 🆕 What's New in 0.2.0
 

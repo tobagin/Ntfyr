@@ -52,6 +52,16 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.2.1" date="2026-01-12">
+        <description>
+            <p>Metadata improvements and documentation updates.</p>
+            <ul>
+                <li>**Improved**: Metadata validation (summary, description, branding coverage)</li>
+                <li>**Documentation**: Simplified README and added Flathub/Ko-Fi badges</li>
+                <li>**Build**: Improved build instructions</li>
+            </ul>
+        </description>
+    </release>
     <release version="0.2.0" date="2026-01-10">
         <description>
             <p>UI refinements and new filtering capabilities.</p>
