@@ -6,17 +6,22 @@
   <!-- Insert your license of choice here -->
   <project_license>GPL-3.0-or-later</project_license>
   <name>Ntfyr</name>
-  <summary>Receive notifications from ntfy.sh</summary>
+  <summary>Receive and send ntfy notifications</summary>
   <description>
-    <p>A desktop client for ntfy.</p>
+    <p>Ntfyr is a native client for ntfy.sh designed for the GNOME Desktop. It allows you to receive notifications from the ntfy.sh service or your own self-hosted ntfy server directly on your desktop.</p>
     <ul>
-    <li>Receive and send notifications with ntfy.sh or a self hosted ntfy server</li>
-    <li>View past notifications</li>
-    <li>Runs automatically at startup and receives notifications in the background</li>
+    <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
+    <li>Run in the background to never miss a notification</li>
+    <li>View past notifications with local history support</li>
+    <li>Support for attachments and action buttons</li>
+    <li>Manage subscriptions grouped by server</li>
     </ul>
-    <p>ntfy allows you to send notifications to your phone or desktop via scripts from any computer and/or using a REST API.</p>
-    <p>You can set up notifications to monitor disk space, ssh logins, weather forecasts, or any number of creative scenarios.</p>
+    <p>ntfy is a simple HTTP-based pub-sub notification service. It allows you to send notifications to your phone or desktop via scripts from any computer, entirely without signup, cost or 3rd party apps.</p>
   </description>
+  <branding>
+    <color type="primary" scheme_preference="light">#89c69d</color>
+    <color type="primary" scheme_preference="dark">#2f483e</color>
+  </branding>
   <categories>
     <category>Network</category>
     <category>Utility</category>

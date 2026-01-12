@@ -2,7 +2,14 @@
 
 A native ntfy.sh client for the GNOME Desktop.
 
+<div align="center">
+
 ![Ntfyr Application](data/screenshots/main-window.png)
+
+<a href="https://flathub.org/en/apps/io.github.tobagin.Ntfyr"><img src="https://flathub.org/api/badge" height="110" alt="Get it on Flathub"></a>
+<a href="https://ko-fi.com/tobagin"><img src="data/kofi_button.png" height="82" alt="Support me on Ko-Fi"></a>
+
+</div>
 
 ## 🎉 Version 0.2.0 - Latest Release
 
@@ -10,12 +17,12 @@ A native ntfy.sh client for the GNOME Desktop.
 
 ### ✨ Key Features
 
-- **🚀 Native Rust Backend**: Built with Rust, GTK4, and Libadwaita for speed and stability
-- **📨 Push Notifications**: Instant notifications from ntfy.sh or self-hosted servers
-- **🔄 Background Service**: Runs reliably in the background via system portals
-- **📂 Attachments**: View images and download files directly within the app
-- **🧩 Multiple Servers**: Group subscriptions by server for better organization
-- **🛡️ Privacy Focused**: Full support for self-hosted instances
+- **🚀 Native and Fast**: Built with Rust and GTK4 for a smooth, native experience.
+- **📨 Push Notifications**: Instant notifications from ntfy.sh or self-hosted servers.
+- **🔄 Background Service**: Runs reliably in the background via system portals.
+- **📂 Attachments**: View images and download files directly within the app.
+- **🧩 Multiple Servers**: Group subscriptions by server for better organization.
+- **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
 ### 🆕 What's New in 0.2.0
 
@@ -89,15 +96,6 @@ curl -d "Hello from CLI" ntfy.sh/mytopic
 - `F1` - Show Shortcuts Help
 - `Ctrl+N` - Subscribe to new topic
 - `Ctrl+F` - Search notifications
-
-## Architecture
-
-Ntfyr is built using modern GNOME technologies:
-
-- **Rust**: For memory safety and performance.
-- **GTK4 / Libadwaita**: For the user interface.
-- **ntfy-daemon**: Custom Rust daemon for handling notification streams.
-- **SQLite**: Local storage for notification history.
 
 ## Privacy & Security
 
