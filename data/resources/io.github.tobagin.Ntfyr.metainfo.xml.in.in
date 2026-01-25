@@ -10,11 +10,11 @@
   <description>
     <p>Ntfyr is a native client for ntfy.sh designed for the GNOME Desktop. It allows you to receive notifications from the ntfy.sh service or your own self-hosted ntfy server directly on your desktop.</p>
     <ul>
-    <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
-    <li>Run in the background to never miss a notification</li>
-    <li>View past notifications with local history support</li>
-    <li>Support for attachments and action buttons</li>
-    <li>Manage subscriptions grouped by server</li>
+      <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
+      <li>Run in the background to never miss a notification</li>
+      <li>View past notifications with local history support</li>
+      <li>Support for attachments and action buttons</li>
+      <li>Manage subscriptions grouped by server</li>
     </ul>
     <p>ntfy is a simple HTTP-based pub-sub notification service. It allows you to send notifications to your phone or desktop via scripts from any computer, entirely without signup, cost or 3rd party apps.</p>
   </description>
@@ -52,57 +52,68 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.3.0" date="2026-01-25">
+      <description>
+        <p>End-to-End Encryption support for secure messaging.</p>
+        <ul>
+          <li>Added End-to-End Encryption for sending and receiving messages</li>
+          <li>New Encrypt Message toggle in Advanced Message Dialog</li>
+          <li>Encryption keys stored securely in system keyring</li>
+          <li>New Encryption Key field in Subscription Info dialog</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-01-12">
-        <description>
-            <p>Metadata improvements and documentation updates.</p>
-            <ul>
-                <li>**Improved**: Metadata validation (summary, description, branding coverage)</li>
-                <li>**Documentation**: Simplified README and added Flathub/Ko-Fi badges</li>
-                <li>**Build**: Improved build instructions</li>
-            </ul>
-        </description>
+      <description>
+        <p>Metadata improvements and documentation updates.</p>
+        <ul>
+          <li>**Improved**: Metadata validation (summary, description, branding coverage)</li>
+          <li>**Documentation**: Simplified README and added Flathub/Ko-Fi badges</li>
+          <li>**Build**: Improved build instructions</li>
+        </ul>
+      </description>
     </release>
     <release version="0.2.0" date="2026-01-10">
-        <description>
-            <p>UI refinements and new filtering capabilities.</p>
-            <ul>
-                <li>**Added**: New Filter Rules dialog and functionality</li>
-                <li>**Changed**: Unifying aesthetics for Add Server/Account dialogs</li>
-                <li>**Changed**: Improved Server Actions menu styling</li>
-                <li>**Fixed**: Correctly display muted icon for muted subscriptions</li>
-                <li>**Fixed**: Database migration reliability improvements</li>
-            </ul>
-        </description>
+      <description>
+        <p>UI refinements and new filtering capabilities.</p>
+        <ul>
+          <li>**Added**: New Filter Rules dialog and functionality</li>
+          <li>**Changed**: Unifying aesthetics for Add Server/Account dialogs</li>
+          <li>**Changed**: Improved Server Actions menu styling</li>
+          <li>**Fixed**: Correctly display muted icon for muted subscriptions</li>
+          <li>**Fixed**: Database migration reliability improvements</li>
+        </ul>
+      </description>
     </release>
     <release version="0.1.2" date="2026-01-06">
-        <description>
-            <p>Improved sandboxing and security with portal-based notifications.</p>
-            <ul>
-                <li>**Changed**: Refactored notification system to use XDG Desktop Portal instead of direct D-Bus access</li>
-                <li>**Improved**: Better sandboxing following Flatpak best practices</li>
-                <li>**Removed**: No longer requires org.freedesktop.Notifications D-Bus permission</li>
-            </ul>
-        </description>
+      <description>
+        <p>Improved sandboxing and security with portal-based notifications.</p>
+        <ul>
+          <li>**Changed**: Refactored notification system to use XDG Desktop Portal instead of direct D-Bus access</li>
+          <li>**Improved**: Better sandboxing following Flatpak best practices</li>
+          <li>**Removed**: No longer requires org.freedesktop.Notifications D-Bus permission</li>
+        </ul>
+      </description>
     </release>
     <release version="0.1.0" date="2026-01-04">
-        <description>
-            <p>Initial release of Ntfyr, a native client for ntfy.sh.</p>
-            <ul>
-                <li>**New**: Subscriptions grouped by server for better organization</li>
-                <li>**New**: Unified server preferences with easy default server selection</li>
-                <li>**New**: Enhanced About dialog with credits and support links</li>
-                <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
-                <li>Support for custom servers and basic authentication</li>
-                <li>Markdown rendering for messages</li>
-                <li>Automatic background execution and autostart</li>
-                <li>View past notifications with local caching</li>
-                <li>Timezone conversion for timestamps</li>
-                <li>Message sorting by date</li>
-                <li>Support for attachments and action buttons</li>
-                <li>Advanced message dialog for sending complex notifications</li>
-                <li>System tray integration</li>
-            </ul>
-        </description>
+      <description>
+        <p>Initial release of Ntfyr, a native client for ntfy.sh.</p>
+        <ul>
+          <li>**New**: Subscriptions grouped by server for better organization</li>
+          <li>**New**: Unified server preferences with easy default server selection</li>
+          <li>**New**: Enhanced About dialog with credits and support links</li>
+          <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
+          <li>Support for custom servers and basic authentication</li>
+          <li>Markdown rendering for messages</li>
+          <li>Automatic background execution and autostart</li>
+          <li>View past notifications with local caching</li>
+          <li>Timezone conversion for timestamps</li>
+          <li>Message sorting by date</li>
+          <li>Support for attachments and action buttons</li>
+          <li>Advanced message dialog for sending complex notifications</li>
+          <li>System tray integration</li>
+        </ul>
+      </description>
     </release>
   </releases>
   <developer_name>Thiago Fernandes</developer_name>

@@ -11,30 +11,26 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.2.1 - Latest Release
+## 🎉 Version 0.3.0 - End-to-End Encryption
 
-**Ntfyr 0.2.1** brings metadata improvements and documentation updates.
+**Ntfyr 0.3.0** adds End-to-End Encryption for secure messaging.
 
 ### ✨ Key Features
 
 - **🚀 Native and Fast**: Built with Rust and GTK4 for a smooth, native experience.
 - **📨 Push Notifications**: Instant notifications from ntfy.sh or self-hosted servers.
+- **🔐 End-to-End Encryption**: Send and receive encrypted messages securely.
 - **🔄 Background Service**: Runs reliably in the background via system portals.
 - **📂 Attachments**: View images and download files directly within the app.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organization.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
-### 🆕 What's New in 0.2.1
+### 🆕 What's New in 0.3.0
 
-- **Metadata Improvements**: Verified and improved metainfo validation (summary, description, branding).
-- **Documentation**: Simplified README, added Flathub/Ko-Fi badges, and improved build instructions.
-
-### 🆕 What's New in 0.2.0
-
-- **Filter Rules**: Create rules to filter notifications based on specific criteria.
-- **Unified UI**: Consistent aesthetics across all dialogs (Add Server, Add Account, Add Topic).
-- **Server Actions**: Improved menu for server management.
-- **Muted Indicator**: Visual indicator for muted subscriptions.
+- **End-to-End Encryption**: Full support for encrypted messages using AES-256-GCM.
+- **Encrypt Toggle**: New "Encrypt Message" switch in the Advanced Message Dialog.
+- **Secure Key Storage**: Encryption keys stored in system keyring via libsecret.
+- **Key Management UI**: New "Encryption Key" field in Subscription Info dialog.
 
 For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md).
 
