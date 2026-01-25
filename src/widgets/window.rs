@@ -218,6 +218,7 @@ glib::wrapper! {
         @implements gio::ActionMap, gio::ActionGroup, gtk::Root, gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Native, gtk::ShortcutManager;
 }
 
+#[allow(deprecated)]
 impl NtfyrWindow {
     pub fn new(app: &NtfyrApplication, notifier: NtfyHandle) -> Self {
         let obj: Self = glib::Object::builder().property("application", app).build();
@@ -258,7 +259,7 @@ impl NtfyrWindow {
                 .publish_msg(models::OutgoingMessage {
                     message: Some(entry.text().as_str().to_string()),
                     ..models::OutgoingMessage::default()
-                })
+                }, false)
                 .await?;
             entry.set_text("");
             Ok(())
@@ -372,7 +373,7 @@ impl NtfyrWindow {
             Ok(())
         });
     }
-    fn notifier(&self) -> &NtfyHandle {
+    pub fn notifier(&self) -> &NtfyHandle {
         self.imp().notifier.get().unwrap()
     }
     fn selected_subscription(&self) -> Option<Subscription> {

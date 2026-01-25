@@ -176,15 +176,20 @@ impl AdvancedMessageDialog {
                                     }
                                 },
                             },
+                            append: encrypt_switch = &adw::SwitchRow {
+                                set_title: "Encrypt Message",
+                                set_subtitle: "Encrypts the message body using the topic key",
+                            },
                             append = &gtk::Button {
                                 set_margin_top: 8,
                                 set_margin_bottom: 8,
                                 add_css_class: "suggested-action",
                                 add_css_class: "pill",
                                 set_label: "Send",
-                                connect_clicked[this, toast_overlay, text_view] => move |_| {
+                                connect_clicked[this, toast_overlay, text_view, encrypt_switch] => move |_| {
                                     let thisc = this.clone();
                                     let text_viewc = text_view.clone();
+                                    let encrypt = encrypt_switch.is_active();
                                     let f = async move {
                                         let buffer = text_viewc.buffer();
                                         let msg = serde_json::from_str(&buffer.text(
@@ -193,7 +198,7 @@ impl AdvancedMessageDialog {
                                             true,
                                         ))?;
                                         thisc.imp().subscription.get().unwrap()
-                                            .publish_msg(msg).await?;
+                                            .publish_msg(msg, encrypt).await?;
                                         thisc.close();
                                         Ok(())
                                     };
@@ -205,6 +210,7 @@ impl AdvancedMessageDialog {
                 }
             }
         }
+
 
         let lang = gsv::LanguageManager::default().language("json").unwrap();
         let buffer = gsv::Buffer::with_language(&lang);

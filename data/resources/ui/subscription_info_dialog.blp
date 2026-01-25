@@ -40,6 +40,14 @@ template $SubscriptionInfoDialog: Adw.Dialog {
           title: "Muted";
         }
       }
+      
+      Adw.PreferencesGroup {
+        title: "Encryption";
+        
+        Adw.PasswordEntryRow encryption_key_entry {
+          title: "Encryption Key (Base64)";
+        }
+      }
 
       Adw.PreferencesGroup {
         title: "Do Not Disturb Schedule";

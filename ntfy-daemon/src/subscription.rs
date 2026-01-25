@@ -19,7 +19,8 @@ enum SubscriptionCommand {
         resp_tx: oneshot::Sender<(Vec<ListenerEvent>, broadcast::Receiver<ListenerEvent>)>,
     },
     Publish {
-        msg: String,
+        msg: models::OutgoingMessage,
+        encrypt: bool,
         resp_tx: oneshot::Sender<anyhow::Result<()>>,
     },
     ClearNotifications {
@@ -100,10 +101,10 @@ impl SubscriptionHandle {
         resp_rx.await.unwrap()
     }
 
-    pub async fn publish(&self, msg: String) -> anyhow::Result<()> {
+    pub async fn publish(&self, msg: models::OutgoingMessage, encrypt: bool) -> anyhow::Result<()> {
         let (resp_tx, resp_rx) = oneshot::channel();
         self.command_tx
-            .send(SubscriptionCommand::Publish { msg, resp_tx })
+            .send(SubscriptionCommand::Publish { msg, encrypt, resp_tx })
             .await
             .unwrap();
         resp_rx.await.unwrap()
@@ -170,9 +171,9 @@ impl SubscriptionActor {
                             }
                             let _ = resp_tx.send(res.map_err(|e| e.into()));
                         }
-                        SubscriptionCommand::Publish {msg, resp_tx} => {
+                        SubscriptionCommand::Publish {msg, encrypt, resp_tx} => {
                             debug!(topic=?self.model.topic, "publishing message");
-                            let _ = resp_tx.send(self.publish(msg).await);
+                            let _ = resp_tx.send(self.publish(msg, encrypt).await);
                         }
                         SubscriptionCommand::Attach { resp_tx } => {
                             debug!(topic=?self.model.topic, "attaching new listener");
@@ -213,8 +214,46 @@ impl SubscriptionActor {
         }
     }
 
-    async fn publish(&self, msg: String) -> anyhow::Result<()> {
+    async fn publish(&self, mut msg: models::OutgoingMessage, encrypt: bool) -> anyhow::Result<()> {
         let server = &self.model.server;
+        let topic = &self.model.topic;
+
+        if encrypt {
+             let key_str = self.env.keys.get(server, topic).ok_or_else(|| anyhow::anyhow!("Encryption requested but no key found"))?;
+             {
+                 use aes_gcm::{
+                    aead::{Aead, KeyInit},
+                    Aes256Gcm, Key, Nonce
+                };
+                use base64::{engine::general_purpose, Engine as _};
+                use rand::Rng;
+
+                let key_bytes = general_purpose::STANDARD.decode(key_str).map_err(|e| anyhow::anyhow!("Invalid key: {}", e))?;
+                let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
+                let cipher = Aes256Gcm::new(key);
+                
+                let mut nonce_bytes = [0u8; 12];
+                rand::thread_rng().fill(&mut nonce_bytes);
+                let nonce = Nonce::from_slice(&nonce_bytes);
+
+                let plaintext = msg.message.as_deref().unwrap_or("").as_bytes();
+                let ciphertext = cipher.encrypt(nonce, plaintext)
+                    .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
+                
+                // Format: version(1) + nonce(12) + ciphertext
+                let mut payload = Vec::with_capacity(1 + 12 + ciphertext.len());
+                payload.push(1); // Version 1
+                payload.extend_from_slice(&nonce_bytes);
+                payload.extend_from_slice(&ciphertext);
+
+                let payload_b64 = general_purpose::STANDARD.encode(&payload);
+                msg.message = Some(payload_b64);
+                // Important: clear title/tags if we want full privacy?
+                // But user might want open title with encrypted body.
+                // We just encrypt the body as per ntfy spec.
+             }
+        }
+
         debug!(server=?server, "preparing to publish message");
         let creds = self.env.credentials.get(server);
         let mut req = self.env.http_client.post(server);
@@ -222,8 +261,10 @@ impl SubscriptionActor {
             req = req.basic_auth(creds.username, Some(creds.password));
         }
 
+        let body = serde_json::to_string(&msg)?;
+
         info!(server=?server, "sending message");
-        let res = req.body(msg).send().await?;
+        let res = req.body(body).send().await?;
         res.error_for_status()?;
         debug!(server=?server, "message published successfully");
         Ok(())

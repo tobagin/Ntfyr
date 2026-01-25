@@ -16,6 +16,13 @@ use crate::credentials::Credentials;
 use crate::http_client::HttpClient;
 use crate::{models, Error};
 
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce,
+};
+use base64::{engine::general_purpose, Engine as _};
+
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "event")]
 pub enum ServerEvent {
@@ -47,6 +54,7 @@ pub enum ListenerEvent {
 pub struct ListenerConfig {
     pub(crate) http_client: HttpClient,
     pub(crate) credentials: Credentials,
+    pub(crate) keys: crate::keys::Keys,
     pub(crate) endpoint: String,
     pub(crate) topic: String,
     pub(crate) since: u64,
@@ -233,7 +241,8 @@ impl ListenerActor {
                     .map_err(|e| Error::InvalidMessage(msg.to_string(), e))?;
 
                 match event {
-                    ServerEvent::Message(msg) => {
+                    ServerEvent::Message(mut msg) => {
+                        self.try_decrypt(&mut msg);
                         debug!(id = %msg.id, "forwarding message");
                         self.event_tx
                             .send(ListenerEvent::Message(msg))
@@ -253,6 +262,69 @@ impl ListenerActor {
         }
         .instrument(span)
         .await
+    }
+
+    fn try_decrypt(&self, msg: &mut models::ReceivedMessage) {
+        let Some(key) = self.config.keys.get(&self.config.endpoint, &self.config.topic) else {
+            return;
+        };
+        let Some(ciphertext) = &msg.message else {
+            return;
+        };
+
+        // ntfy.sh keys: "base64 encoded 32-byte keys"
+        // Let's decode the key
+        let Ok(key_bytes) = general_purpose::STANDARD.decode(&key) else {
+            error!("Invalid base64 key for topic {}", self.config.topic);
+            return;
+        };
+        if key_bytes.len() != 32 {
+             error!("Invalid key length for topic {} (expected 32 bytes)", self.config.topic);
+             return;
+        }
+
+        // Ciphertext format: 
+        // ntfy uses AES-GCM. The raw message is base64 encoded.
+        // It consists of version (1 byte) + nonce (12 bytes) + ciphertext.
+        // But ntfy docs say: "The message is encrypted using AES-256-GCM. The encryption key is derived from the password using PBKDF2... Wait."
+        // Let's re-read ntfy docs on encryption. 
+        // "End-to-end encryption ... You can generate a key ... The key is a 32-byte random string."
+        // "Messages are encrypted using AES-GCM (256 bit). The nonce (IV) is 12 bytes long."
+        // "The encrypted message is constructed as follows: <1 byte version> <12 bytes nonce> <ciphertext>"
+        // Version is currently 1.
+        
+        let Ok(raw) = general_purpose::STANDARD.decode(ciphertext) else {
+             // Not base64, maybe not encrypted or just garbage? 
+             // If we have a key, we expect it to be encrypted.
+             return; 
+        };
+
+        if raw.len() < 1 + 12 {
+            return; 
+        }
+
+        let version = raw[0];
+        if version != 1 {
+            error!("Unsupported encryption version: {}", version);
+            return;
+        }
+
+        let nonce = Nonce::from_slice(&raw[1..13]);
+        let ciphertext_body = &raw[13..];
+
+        let cipher = Aes256Gcm::new_from_slice(&key_bytes).expect("Key size verified");
+
+        match cipher.decrypt(nonce, ciphertext_body) {
+            Ok(plaintext) => {
+                if let Ok(utf8) = String::from_utf8(plaintext) {
+                     debug!("Decrypted message for topic {}", self.config.topic);
+                     msg.message = Some(utf8);
+                }
+            }
+            Err(_) => {
+                error!("Failed to decrypt message for topic {}", self.config.topic);
+            }
+        }
     }
 }
 

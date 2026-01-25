@@ -5,22 +5,22 @@ use async_trait::async_trait;
 
 #[derive(Clone)]
 pub struct KeyringItem {
-    attributes: HashMap<String, String>,
+    pub attributes: HashMap<String, String>,
     // we could zero-out this region of memory
-    secret: Vec<u8>,
+    pub secret: Vec<u8>,
 }
 
 impl KeyringItem {
-    async fn attributes(&self) -> HashMap<String, String> {
+    pub async fn attributes(&self) -> HashMap<String, String> {
         self.attributes.clone()
     }
-    async fn secret(&self) -> &[u8] {
+    pub async fn secret(&self) -> &[u8] {
         &self.secret[..]
     }
 }
 
 #[async_trait]
-trait LightKeyring {
+pub trait LightKeyring {
     async fn search_items(
         &self,
         attributes: HashMap<&str, &str>,
@@ -35,8 +35,8 @@ trait LightKeyring {
     async fn delete(&self, attributes: HashMap<&str, &str>) -> anyhow::Result<()>;
 }
 
-struct RealKeyring {
-    keyring: oo7::Keyring,
+pub struct RealKeyring {
+    pub(crate) keyring: oo7::Keyring,
 }
 
 #[async_trait]
@@ -76,8 +76,8 @@ impl LightKeyring for RealKeyring {
     }
 }
 
-struct NullableKeyring {
-    search_response: Vec<KeyringItem>,
+pub struct NullableKeyring {
+    pub(crate) search_response: Vec<KeyringItem>,
 }
 
 impl NullableKeyring {

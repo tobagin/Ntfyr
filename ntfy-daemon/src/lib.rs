@@ -1,5 +1,6 @@
 mod actor_utils;
 pub mod credentials;
+pub mod keys;
 mod http_client;
 mod listener;
 pub mod message_repo;
@@ -24,6 +25,7 @@ pub struct SharedEnv {
     http_client: HttpClient,
     network_monitor: Arc<dyn models::NetworkMonitorProxy>,
     credentials: credentials::Credentials,
+    keys: keys::Keys,
 }
 
 #[derive(thiserror::Error, Debug)]

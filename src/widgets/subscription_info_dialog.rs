@@ -20,6 +20,8 @@ mod imp {
         pub display_name_entry: TemplateChild<adw::EntryRow>,
         #[template_child]
         pub muted_switch_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub encryption_key_entry: TemplateChild<adw::PasswordEntryRow>,
         
         // Schedule
         #[template_child]
@@ -69,6 +71,8 @@ mod imp {
             this.init_schedule_ui(&sub);
              // Init Rules
             this.init_rules_ui(&sub);
+             // Init Encryption
+            this.init_encryption_ui(&sub);
 
             let debouncer = crate::async_utils::Debouncer::new();
             self.display_name_entry.connect_changed({
@@ -130,10 +134,23 @@ mod imp {
                    this.show_add_rule_dialog(); 
                }
             });
-            let this = self.obj().clone();
+            let this_muted = this.clone();
             self.muted_switch_row.connect_active_notify({
                 move |switch| {
-                    this.update_muted(switch);
+                    this_muted.update_muted(switch);
+                }
+            });
+
+            // Encryption Signal
+            let debouncer_clone = debouncer.clone();
+            let this_weak = this.downgrade();
+            self.encryption_key_entry.connect_notify_local(Some("text"), move |entry, _| {
+                if let Some(this) = this_weak.upgrade() {
+                     let entry = entry.clone();
+                     let debouncer = debouncer_clone.clone();
+                     debouncer.call(std::time::Duration::from_millis(500), move || {
+                         this.update_encryption_key(&entry);
+                     });
                 }
             });
         }
@@ -322,6 +339,41 @@ impl SubscriptionInfoDialog {
         
         dialog.present(Some(self));
     }
-        
-// Old add_rule removed as it's now handled in the closure
+
+    fn init_encryption_ui(&self, sub: &crate::subscription::Subscription) {
+        let this = self.clone();
+        let sub = sub.clone();
+        let this_inner = this.clone();
+        this.error_boundary().spawn(async move {
+            if let Some(window) = this_inner.root().and_downcast::<crate::widgets::NtfyrWindow>() {
+                 let notifier = window.notifier();
+                 let key = notifier.get_key(sub.server().as_str(), sub.topic().as_str()).await?;
+                 if let Some(key) = key {
+                     this_inner.imp().encryption_key_entry.set_text(&key);
+                 }
+            }
+            Ok(())
+        });
+    }
+
+    fn update_encryption_key(&self, entry: &impl IsA<gtk::Editable>) {
+        if let Some(sub) = self.subscription() {
+            let key = entry.text().to_string();
+            let sub = sub.clone();
+            
+            // We need to access the application to get the notifier handle
+            // Or add a method to Subscription wrapper to set key
+            if let Some(window) = self.root().and_downcast::<crate::widgets::NtfyrWindow>() {
+                 window.error_boundary().spawn(async move {
+                     let notifier = window.notifier();
+                     if key.is_empty() {
+                         notifier.remove_key(sub.server().as_str(), sub.topic().as_str()).await?;
+                     } else {
+                         notifier.add_key(sub.server().as_str(), sub.topic().as_str(), &key).await?;
+                     }
+                     Ok(())
+                 });
+            }
+        }
+    }
 }

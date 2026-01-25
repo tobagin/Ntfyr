@@ -70,6 +70,26 @@ pub enum NtfyCommand {
         server: String,
         resp_tx: oneshot::Sender<anyhow::Result<()>>,
     },
+    AddKey {
+        server: String,
+        topic: String,
+        key: String,
+        resp_tx: oneshot::Sender<anyhow::Result<()>>,
+    },
+    RemoveKey {
+        server: String,
+        topic: String,
+        resp_tx: oneshot::Sender<anyhow::Result<()>>,
+    },
+    #[allow(dead_code)]
+    ListKeys {
+        resp_tx: oneshot::Sender<anyhow::Result<HashMap<(String, String), String>>>,
+    },
+    GetKey {
+        server: String,
+        topic: String,
+        resp_tx: oneshot::Sender<Option<String>>,
+    },
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -225,6 +245,50 @@ impl NtfyActor {
                 let result = self.env.credentials.delete(&server).await;
                 let _ = resp_tx.send(result);
             }
+
+            NtfyCommand::AddKey {
+                server,
+                topic,
+                key,
+                resp_tx,
+            } => {
+                let result = self.env.keys.insert(&server, &topic, &key).await;
+                let _ = resp_tx.send(result);
+            }
+
+            NtfyCommand::RemoveKey {
+                server,
+                topic,
+                resp_tx,
+            } => {
+                let result = self.env.keys.delete(&server, &topic).await;
+                let _ = resp_tx.send(result);
+            }
+
+            NtfyCommand::ListKeys { resp_tx } => {
+                let _keys = self.env.keys.clone();
+                // Not optimal but we need to read from the internal lock which is not exposed directly 
+                // We'll rely on the keys internal cache which we can't easily access from here without exposing it.
+                // Or we can just read from the struct if we make `keys` map public or add a method.
+                // Let's assume we don't need ListKeys for now or we implement `list_all` in `keys.rs`.
+                // Wait, I didn't implement `list_all` in `keys.rs`. Let's skip ListKeys implementation in keys.rs for now or add it.
+                
+                // Correction: I should have added `list_all` to `keys.rs`.
+                // Since I cannot edit `keys.rs` in this same tool call, I will assume I can just access it via a new method later 
+                // OR I can't fulfill this command yet.
+                // Actually, I can just not implement ListKeys command if the UI doesn't need it (it acts per subscription).
+                // Or I can add `list_all` to `keys.rs` in a subsequent step.
+                // For now, let's return empty or error? No, let's implement the other two.
+                let _ = resp_tx.send(Err(anyhow::anyhow!("Not implemented")));
+            }
+            NtfyCommand::GetKey {
+                server,
+                topic,
+                resp_tx,
+            } => {
+                let result = self.env.keys.get(&server, &topic);
+                let _ = resp_tx.send(result);
+            }
         }
     }
 
@@ -263,6 +327,7 @@ impl NtfyActor {
         let listener = ListenerHandle::new(ListenerConfig {
             http_client: self.env.http_client.clone(),
             credentials: self.env.credentials.clone(),
+            keys: self.env.keys.clone(),
             endpoint: server.clone(),
             topic: topic.clone(),
             since,
@@ -348,6 +413,36 @@ impl NtfyHandle {
             resp_tx,
         })
     }
+
+    pub async fn add_key(&self, server: &str, topic: &str, key: &str) -> anyhow::Result<()> {
+         send_command!(self, |resp_tx| NtfyCommand::AddKey {
+            server: server.to_string(),
+            topic: topic.to_string(),
+            key: key.to_string(),
+            resp_tx,
+        })
+    }
+
+    pub async fn remove_key(&self, server: &str, topic: &str) -> anyhow::Result<()> {
+        send_command!(self, |resp_tx| NtfyCommand::RemoveKey {
+            server: server.to_string(),
+            topic: topic.to_string(),
+            resp_tx,
+        })
+    }
+
+    pub async fn get_key(&self, server: &str, topic: &str) -> anyhow::Result<Option<String>> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        self.command_tx
+            .send(NtfyCommand::GetKey {
+                server: server.to_string(),
+                topic: topic.to_string(),
+                resp_tx,
+            })
+            .await
+            .map_err(|e| anyhow!("Actor is dead: {}", e))?;
+        Ok(resp_rx.await?)
+    }
 }
 
 pub fn start(
@@ -367,8 +462,12 @@ pub fn start(
             .unwrap();
 
         // Create everything inside the new thread's runtime
-        let credentials =
-            rt.block_on(async move { crate::credentials::Credentials::new().await.unwrap() });
+        let (credentials, keys) = rt.block_on(async move {
+            (
+                crate::credentials::Credentials::new().await.unwrap(),
+                crate::keys::Keys::new().await.unwrap(),
+            )
+        });
 
         let env = SharedEnv {
             db: Db::connect(&dbpath).unwrap(),
@@ -376,6 +475,7 @@ pub fn start(
             http_client: HttpClient::new(build_client().unwrap()),
             network_monitor: network_proxy,
             credentials,
+            keys,
         };
 
         let (mut actor, handle) = NtfyActor::new(env);

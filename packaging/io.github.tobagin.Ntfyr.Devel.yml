@@ -13,6 +13,7 @@ finish-args:
   - --device=dri
   - --own-name=io.github.tobagin.Ntfyr.Devel
   - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.secrets
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
   build-args:

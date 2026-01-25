@@ -356,13 +356,10 @@ impl Subscription {
 
         Ok(())
     }
-    pub async fn publish_msg(&self, mut msg: models::OutgoingMessage) -> anyhow::Result<()> {
+    pub async fn publish_msg(&self, mut msg: models::OutgoingMessage, encrypt: bool) -> anyhow::Result<()> {
         let imp = self.imp();
-        let json = {
-            msg.topic = self.topic();
-            serde_json::to_string(&msg)?
-        };
-        imp.client.get().unwrap().publish(json).await?;
+        msg.topic = self.topic();
+        imp.client.get().unwrap().publish(msg, encrypt).await?;
         Ok(())
     }
     #[instrument(skip_all)]
