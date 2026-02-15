@@ -11,26 +11,27 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.3.0 - End-to-End Encryption
+## 🎉 Version 0.4.0 - App Locking & Privacy
 
-**Ntfyr 0.3.0** adds End-to-End Encryption for secure messaging.
+**Ntfyr 0.4.0** adds App Locking and enhanced privacy controls.
 
 ### ✨ Key Features
 
 - **🚀 Native and Fast**: Built with Rust and GTK4 for a smooth, native experience.
 - **📨 Push Notifications**: Instant notifications from ntfy.sh or self-hosted servers.
 - **🔐 End-to-End Encryption**: Send and receive encrypted messages securely.
+- **🛡️ App Locking**: Protect your messages with a PIN code.
 - **🔄 Background Service**: Runs reliably in the background via system portals.
 - **📂 Attachments**: View images and download files directly within the app.
-- **🧩 Multiple Servers**: Group subscriptions by server for better organization.
+- **🧩 Multiple Servers**: Group subscriptions by server for better organizational.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
-### 🆕 What's New in 0.3.0
+### 🆕 What's New in 0.4.0
 
-- **End-to-End Encryption**: Full support for encrypted messages using AES-256-GCM.
-- **Encrypt Toggle**: New "Encrypt Message" switch in the Advanced Message Dialog.
-- **Secure Key Storage**: Encryption keys stored in system keyring via libsecret.
-- **Key Management UI**: New "Encryption Key" field in Subscription Info dialog.
+- **App Lock**: Secure access with a PIN code.
+- **Auto-Lock**: Lock app after inactivity.
+- **Privacy & Security**: Hide notification content and verify security settings.
+- **Secrets Management**: Robust secret storage using libsecret.
 
 For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md).
 

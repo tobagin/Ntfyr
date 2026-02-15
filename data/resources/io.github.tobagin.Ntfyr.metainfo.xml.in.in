@@ -52,6 +52,21 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.4.0" date="2026-02-15">
+      <description>
+        <p>App Locking and improved Privacy features.</p>
+        <ul>
+          <li>
+            <strong>Added</strong>: App Lock with PIN code to secure your messages</li>
+          <li>
+            <strong>Added</strong>: Auto-lock functionality</li>
+          <li>
+            <strong>Added</strong>: Privacy settings to hide notification content when locked</li>
+          <li>
+            <strong>Security</strong>: Secrets are now stored securely using libsecret</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-01-25">
       <description>
         <p>End-to-End Encryption support for secure messaging.</p>
