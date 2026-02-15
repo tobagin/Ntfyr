@@ -16,6 +16,11 @@ template $NtfyrPreferences: Adw.PreferencesDialog {
         title: "Sort descending";
         subtitle: "Newest messages at the top";
       }
+
+      Adw.SwitchRow show_default_server_switch {
+        title: "Show Default Server";
+        subtitle: "Show ntfy.sh in the server list";
+      }
     }
 
     Adw.PreferencesGroup {
@@ -28,6 +33,46 @@ template $NtfyrPreferences: Adw.PreferencesDialog {
       Adw.SwitchRow startup_background_switch {
         title: "Start in Background";
         subtitle: "Start the application in the tray instead of showing the window";
+      }
+    }
+  }
+
+  Adw.PreferencesPage {
+    title: "Privacy & Security";
+    icon-name: "channel-secure-symbolic";
+
+    Adw.PreferencesGroup {
+      title: "App Lock";
+      description: "Secure the application with system authentication.";
+
+      Adw.SwitchRow app_lock_switch {
+        title: "App Lock";
+        subtitle: "Require password to open the app";
+      }
+
+      Adw.ActionRow change_password_row {
+        title: "Change Password";
+        activatable: true;
+        
+        [suffix]
+        Gtk.Image {
+          icon-name: "go-next-symbolic";
+        }
+      }
+      
+      Adw.SwitchRow auto_lock_switch {
+        title: "Auto-lock";
+        subtitle: "Automatically lock when inactive";
+      }
+
+      Adw.SpinRow auto_lock_timeout {
+        title: "Lock Timeout";
+        subtitle: "Minutes of inactivity before locking";
+        adjustment: Gtk.Adjustment {
+          lower: 1;
+          upper: 60;
+          step-increment: 1;
+        };
       }
     }
   }

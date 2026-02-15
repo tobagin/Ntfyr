@@ -1938,6 +1938,7 @@ dependencies = [
  "libadwaita",
  "ntfy-daemon",
  "once_cell",
+ "oo7",
  "pulldown-cmark",
  "rand 0.8.5",
  "relm4-macros",

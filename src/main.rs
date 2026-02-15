@@ -6,6 +6,7 @@ pub mod error;
 mod subscription;
 pub mod widgets;
 mod tray;
+pub mod secrets;
 
 use gettextrs::{gettext, LocaleCategory};
 use gtk::{gio, glib};

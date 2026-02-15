@@ -25,6 +25,10 @@
       <default>false</default>
       <summary>Start in background</summary>
     </key>
+    <key name="app-lock-enabled" type="b">
+      <default>false</default>
+      <summary>Enable Biometric/App Lock on Startup</summary>
+    </key>
     <key name="custom-servers" type="as">
       <default>[]</default>
       <summary>List of custom servers</summary>
@@ -32,6 +36,18 @@
     <key name="default-server" type="s">
       <default>'https://ntfy.sh'</default>
       <summary>Default server for new subscriptions</summary>
+    </key>
+    <key name="show-default-server" type="b">
+      <default>true</default>
+      <summary>Show default server (ntfy.sh) in list</summary>
+    </key>
+    <key name="lock-timeout" type="i">
+      <default>300</default>
+      <summary>App lock timeout in seconds</summary>
+    </key>
+    <key name="auto-lock-enabled" type="b">
+      <default>false</default>
+      <summary>Enable auto-lock timeout</summary>
     </key>
   </schema>
 </schemalist>

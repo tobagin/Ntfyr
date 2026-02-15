@@ -3,6 +3,7 @@
 blueprints = custom_target('blueprints',
   input: files(
     'ui/window.blp',
+    'ui/lock_view.blp',
     'ui/shortcuts.blp',
     'ui/subscription_info_dialog.blp',
     'ui/preferences.blp',

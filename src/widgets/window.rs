@@ -7,11 +7,12 @@ use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 use ntfy_daemon::models;
 use ntfy_daemon::NtfyHandle;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::application::NtfyrApplication;
 use crate::config::{APP_ID, PROFILE};
 use crate::error::*;
+use anyhow::Result;
 use crate::subscription::Status;
 use crate::subscription::Subscription;
 use crate::widgets::*;
@@ -29,6 +30,10 @@ mod imp {
         #[template_child]
         pub subscription_list: TemplateChild<gtk::ListBox>,
         #[template_child]
+        pub main_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub lock_view: TemplateChild<LockView>,
+        #[template_child]
         pub entry: TemplateChild<gtk::Entry>,
         #[template_child]
         pub navigation_split_view: TemplateChild<adw::NavigationSplitView>,
@@ -42,7 +47,7 @@ mod imp {
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
         #[template_child]
-        pub welcome_view: TemplateChild<adw::StatusPage>,
+        pub welcome_view: TemplateChild<adw::ToolbarView>,
         #[template_child]
         pub list_view: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
@@ -68,6 +73,7 @@ mod imp {
         pub banner_binding: Cell<Option<(Subscription, glib::SignalHandlerId)>>,
         pub subscription_sorter: OnceCell<gtk::CustomSorter>,
         pub subscription_sort_model: OnceCell<gtk::SortListModel>,
+        pub last_activity: Cell<std::time::Instant>,
     }
 
     impl Default for NtfyrWindow {
@@ -80,6 +86,8 @@ mod imp {
                 navigation_split_view: Default::default(),
                 subscription_menu_btn: Default::default(),
                 subscription_list: Default::default(),
+                main_stack: Default::default(),
+                lock_view: Default::default(),
                 toast_overlay: Default::default(),
                 stack: Default::default(),
                 welcome_view: Default::default(),
@@ -98,6 +106,7 @@ mod imp {
                 code_btn: Default::default(),
                 subscription_sorter: Default::default(),
                 subscription_sort_model: Default::default(),
+                last_activity: Cell::new(std::time::Instant::now()),
             };
 
             this
@@ -191,6 +200,10 @@ mod imp {
             if PROFILE == "Devel" {
                 obj.add_css_class("devel");
             }
+
+            // Setup Lock Screen
+            obj.setup_app_lock();
+            obj.setup_auto_lock();
         }
     }
 
@@ -314,6 +327,10 @@ impl NtfyrWindow {
             // Rebuild the list to show new/removed servers
             this.rebuild_subscription_list();
         });
+        let this = self.clone();
+        settings.connect_changed(Some("show-default-server"), move |_, _| {
+             this.rebuild_subscription_list();
+        });
     }
 
     fn add_subscription(&self, sub: models::Subscription) {
@@ -373,6 +390,75 @@ impl NtfyrWindow {
             Ok(())
         });
     }
+
+    pub fn purge_default_server_topics(&self) {
+        let this = self.clone();
+        
+        self.error_boundary().spawn(async move {
+            info!("Starting purge of default server topics");
+            let imp = this.imp();
+            let mut to_remove = Vec::new();
+
+            // Collect subscriptions to remove from the UI model
+            for i in 0..imp.subscription_list_model.n_items() {
+                if let Some(sub) = imp.subscription_list_model.item(i).and_downcast::<Subscription>() {
+                    if sub.server() == "https://ntfy.sh" {
+                        info!("Found topic to remove: {}", sub.topic());
+                        to_remove.push(sub);
+                    }
+                }
+            }
+
+            info!("Purging {} topics from default server", to_remove.len());
+
+            for sub in to_remove {
+                info!("Purging topic: {}", sub.topic());
+                
+                // Get the subscription handle to delete messages
+                if let Some(handle) = sub.imp().client.get() {
+                    // Delete all messages for this topic
+                    if let Err(e) = handle.clear_notifications().await {
+                        warn!("Failed to clear notifications for {}: {}", sub.topic(), e);
+                    } else {
+                        info!("Cleared notifications for {}", sub.topic());
+                    }
+                }
+                
+                // Unsubscribe from the daemon (removes from DB and stops listener)
+                if let Err(e) = this.notifier()
+                    .unsubscribe(sub.server().as_str(), sub.topic().as_str())
+                    .await 
+                {
+                    warn!("Failed to unsubscribe {}: {}", sub.topic(), e);
+                } else {
+                    info!("Successfully unsubscribed from {}", sub.topic());
+                }
+                
+                // Remove from model if present
+                if let Some(i) = imp.subscription_list_model.find(&sub) {
+                    info!("Removing {} from model at index {}", sub.topic(), i);
+                    imp.subscription_list_model.remove(i);
+                } else {
+                    warn!("Could not find {} in model to remove", sub.topic());
+                }
+            }
+            
+            info!("Purge complete, rebuilding UI");
+            
+            // Trigger UI rebuild
+            this.rebuild_subscription_list();
+            
+            // Clear selection if needed
+            if imp.subscription_list_model.n_items() == 0 {
+                this.selected_subscription_changed(None);
+            }
+            
+            info!("Default server topics purged successfully");
+            
+            Ok::<_, anyhow::Error>(())
+        });
+    }
+
     pub fn notifier(&self) -> &NtfyHandle {
         self.imp().notifier.get().unwrap()
     }
@@ -544,7 +630,12 @@ impl NtfyrWindow {
         
         // Get all servers (ntfy.sh + custom servers)
         let settings = gio::Settings::new(crate::config::APP_ID);
-        let mut all_servers = vec!["https://ntfy.sh".to_string()];
+        let mut all_servers = Vec::new();
+
+        if settings.boolean("show-default-server") {
+             all_servers.push("https://ntfy.sh".to_string());
+        }
+
         all_servers.extend(
             settings.strv("custom-servers")
                 .into_iter()
@@ -658,12 +749,12 @@ impl NtfyrWindow {
         let add_account_btn = create_menu_row("Add Account", "contact-new-symbolic");
         let server_clone = server.to_string();
         let popover_clone = popover.clone();
-        add_account_btn.connect_clicked(move |btn| {
-            popover_clone.popdown();
-            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
-                window.on_add_account_clicked(&server_clone);
-            }
-        });
+            add_account_btn.connect_clicked(move |btn| {
+                popover_clone.popdown();
+                if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                    window.on_add_account_clicked(&server_clone);
+                }
+            });
         menu_box.append(&add_account_btn);
 
         // Remove Server Item (only custom)
@@ -680,6 +771,18 @@ impl NtfyrWindow {
                 }
             });
             menu_box.append(&remove_btn);
+        } else {
+             let hide_btn = create_menu_row("Hide Server", "view-hidden-symbolic");
+             hide_btn.add_css_class("destructive-action"); // Optional: style it destructively or normally
+ 
+             let popover_clone = popover.clone();
+             hide_btn.connect_clicked(move |btn| {
+                 popover_clone.popdown();
+                 if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                     window.on_hide_server_clicked();
+                 }
+             });
+             menu_box.append(&hide_btn);
         }
 
         popover.set_child(Some(&menu_box));
@@ -747,10 +850,7 @@ impl NtfyrWindow {
         let server_clone = server.to_string();
         add_account_btn.connect_clicked(move |btn| {
             if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
-                let server = server_clone.clone();
-                btn.error_boundary().spawn(async move {
-                    window.on_add_account_clicked(&server).await
-                });
+                window.on_add_account_clicked(&server_clone);
             }
         });
         button_box.append(&add_account_btn);
@@ -1096,6 +1196,15 @@ impl NtfyrWindow {
         let _ = settings.set_strv("custom-servers", servers.iter().map(|s| s.as_str()).collect::<Vec<&str>>().as_slice());
     }
 
+    pub fn on_hide_server_clicked(&self) {
+        let settings = gio::Settings::new(crate::config::APP_ID);
+        let _ = settings.set_boolean("show-default-server", false);
+        
+        // Also show a toast so user knows how to bring it back
+        let toast = adw::Toast::new("Default server hidden. You can restore it in Preferences.");
+        self.imp().toast_overlay.add_toast(toast);
+    }
+
     pub fn show_add_topic_for_server(&self, server: &str) {
         let dialog = AddSubscriptionDialog::new(server.to_string());
         dialog.present(Some(self));
@@ -1116,35 +1225,144 @@ impl NtfyrWindow {
         });
     }
 
-    pub async fn on_add_account_clicked(&self, server: &str) -> anyhow::Result<()> {
+    pub fn on_add_account_clicked(&self, server: &str) {
         let dialog = NtfyrAccountDialog::new(server.to_string());
-        dialog.set_title("Add Account");
-        
-        // Remove obsolete pre-selection logic
-        
-        let (sender, receiver) = async_channel::bounded(1);
+        dialog.present(Some(self));
+
+        let this = self.clone();
         dialog.connect_closure(
             "save",
             false,
-            glib::closure_local!(move |_dialog: NtfyrAccountDialog| {
-                let _ = sender.send_blocking(());
+            glib::closure_local!(move |dialog: NtfyrAccountDialog| {
+                let (server, username, password) = dialog.account_data();
+                let this = this.clone();
+                this.error_boundary().spawn(async move {
+                    let n = this.notifier();
+                    n.add_account(&server, &username, &password).await?;
+                    let toast = adw::Toast::new("Account added successfully");
+                    this.imp().toast_overlay.add_toast(toast);
+                    Ok(())
+                });
             }),
         );
-
-        dialog.present(Some(self));
-
-        if let Ok(()) = receiver.recv().await {
-            let (server, username, password) = dialog.account_data();
-            let n = self.notifier();
-            n.add_account(&server, &username, &password).await?;
-            
-            let toast = adw::Toast::new("Account added successfully");
-            self.imp().toast_overlay.add_toast(toast);
-        }
-
-        Ok(())
     }
 
+    fn setup_app_lock(&self) {
+        let imp = self.imp();
+        let is_locked = imp.settings.boolean("app-lock-enabled");
+        
+        if is_locked {
+            imp.main_stack.set_visible_child(&*imp.lock_view);
+            
+            let this = self.clone();
+            imp.lock_view.imp().unlock_button.connect_clicked(move |_| {
+                this.request_unlock();
+            });
+            
+            let this = self.clone();
+            imp.lock_view.imp().password_entry.connect_activate(move |_| {
+                this.request_unlock();
+            });
+        } else {
+            imp.main_stack.set_visible_child(&*imp.navigation_split_view);
+        }
+    }
 
+    fn setup_auto_lock(&self) {
+        // Event Controller capturing all events to reset timer
+        let controller = gtk::EventControllerLegacy::new();
+        let this = self.clone();
+        controller.connect_event(move |_, _| {
+             this.imp().last_activity.set(std::time::Instant::now());
+             glib::Propagation::Proceed
+        });
+        self.add_controller(controller);
+
+        // Idle check loop
+        let this = self.clone();
+        glib::MainContext::default().spawn_local(async move {
+             loop {
+                 glib::timeout_future_seconds(10).await;
+                 
+                 let imp = this.imp();
+                 let settings = &imp.settings;
+                 
+                 // Check if auto-lock is enabled
+                 if !settings.boolean("auto-lock-enabled") {
+                     continue;
+                 }
+                 
+                 // Check if already locked
+                 if imp.main_stack.visible_child().map(|w| w == *imp.lock_view).unwrap_or(false) {
+                     continue;
+                 }
+
+                 let timeout_secs = settings.int("lock-timeout") as u64;
+                 let elapsed = imp.last_activity.get().elapsed().as_secs();
+                 
+                 if elapsed >= timeout_secs {
+                     info!("Auto-lock timeout reached ({}s), locking app.", elapsed);
+                     this.lock_app();
+                 }
+             }
+        });
+    }
+
+    pub fn lock_app(&self) {
+        let imp = self.imp();
+         // If app lock is enabled generally, switch to lock view
+         if imp.settings.boolean("app-lock-enabled") {
+             imp.main_stack.set_visible_child(&*imp.lock_view);
+         }
+    }
+
+    fn request_unlock(&self) {
+        let imp = self.imp();
+        // Access via public method on wrapper, not imp()
+        let entry_text = imp.lock_view.password_text();
+        
+        let this = self.clone();
+        self.error_boundary().spawn(async move {
+            let stored = crate::secrets::get_password().await.unwrap_or_else(|e| {
+                warn!("Failed to get password: {}", e);
+                None
+            });
+            
+            let unlocked = if let Some(stored_pass) = stored {
+                if entry_text == stored_pass {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                // No password set, allow unlock but warn
+                warn!("App lock enabled but no password set.");
+                true
+            };
+
+            if unlocked {
+                info!("Authentication successful");
+                glib::MainContext::default().spawn_local(async move {
+                    let imp = this.imp();
+                    imp.lock_view.clear_password(); // Clear
+                    imp.main_stack.set_visible_child(&*imp.navigation_split_view);
+                    
+                    if entry_text.is_empty() { 
+                         let toast = adw::Toast::new("Warning: No password set for App Lock.");
+                         this.imp().toast_overlay.add_toast(toast);
+                    }
+                });
+            } else {
+                warn!("Authentication failed");
+                glib::MainContext::default().spawn_local(async move {
+                     let toast = adw::Toast::new("Incorrect password");
+                     this.imp().toast_overlay.add_toast(toast);
+                     this.imp().lock_view.show_error();
+                });
+            }
+            Ok(())
+        });
+    }
 
 }
+

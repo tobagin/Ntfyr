@@ -15,6 +15,9 @@ use crate::widgets::*;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use crate::tray;
 
+// Unlock feature
+use crate::widgets::NtfyrWindow;
+
 mod imp {
     use std::cell::RefCell;
 
@@ -212,12 +215,21 @@ impl NtfyrApplication {
             })
             .build();
 
+        let action_purge_default = gio::ActionEntry::builder("purge-default-server")
+            .activate(|app: &Self, _, _| {
+                if let Some(win) = app.imp().window.borrow().upgrade() {
+                    win.purge_default_server_topics();
+                }
+            })
+            .build();
+
         self.add_action_entries([
             action_quit,
             action_about,
             action_shortcuts,
             action_preferences,
             message_action,
+            action_purge_default,
         ]);
         
         let action_toggle_window = gio::ActionEntry::builder("toggle-window")
