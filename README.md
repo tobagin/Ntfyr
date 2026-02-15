@@ -11,9 +11,9 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.4.0 - App Locking & Privacy
+## 🎉 Version 0.4.1 - Quick Fix
 
-**Ntfyr 0.4.0** adds App Locking and enhanced privacy controls.
+**Ntfyr 0.4.1** is a quick fix release to address AppStream metadata issues.
 
 ### ✨ Key Features
 
@@ -26,12 +26,10 @@ A native ntfy.sh client for the GNOME Desktop.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organizational.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
-### 🆕 What's New in 0.4.0
+### 🆕 What's New in 0.4.1
 
-- **App Lock**: Secure access with a PIN code.
-- **Auto-Lock**: Lock app after inactivity.
-- **Privacy & Security**: Hide notification content and verify security settings.
-- **Secrets Management**: Robust secret storage using libsecret.
+- **Fixed**: AppStream metadata validation.
+- **Improved**: Release description formatting.
 
 For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md).
 

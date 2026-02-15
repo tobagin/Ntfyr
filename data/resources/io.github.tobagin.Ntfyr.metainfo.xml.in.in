@@ -52,18 +52,22 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.4.1" date="2026-02-15">
+      <description>
+        <p>Fixed AppStream metadata validation issues.</p>
+        <ul>
+          <li>Fixed metadata validation issues by removing HTML tags from release description</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-02-15">
       <description>
         <p>App Locking and improved Privacy features.</p>
         <ul>
-          <li>
-            <strong>Added</strong>: App Lock with PIN code to secure your messages</li>
-          <li>
-            <strong>Added</strong>: Auto-lock functionality</li>
-          <li>
-            <strong>Added</strong>: Privacy settings to hide notification content when locked</li>
-          <li>
-            <strong>Security</strong>: Secrets are now stored securely using libsecret</li>
+          <li>App Lock with PIN code to secure your messages</li>
+          <li>Auto-lock functionality</li>
+          <li>Privacy settings to hide notification content when locked</li>
+          <li>Secrets are now stored securely using libsecret</li>
         </ul>
       </description>
     </release>
@@ -82,9 +86,9 @@
       <description>
         <p>Metadata improvements and documentation updates.</p>
         <ul>
-          <li>**Improved**: Metadata validation (summary, description, branding coverage)</li>
-          <li>**Documentation**: Simplified README and added Flathub/Ko-Fi badges</li>
-          <li>**Build**: Improved build instructions</li>
+          <li>Improved metadata validation (summary, description, branding coverage)</li>
+          <li>Simplified README and added Flathub/Ko-Fi badges</li>
+          <li>Improved build instructions</li>
         </ul>
       </description>
     </release>
@@ -92,11 +96,11 @@
       <description>
         <p>UI refinements and new filtering capabilities.</p>
         <ul>
-          <li>**Added**: New Filter Rules dialog and functionality</li>
-          <li>**Changed**: Unifying aesthetics for Add Server/Account dialogs</li>
-          <li>**Changed**: Improved Server Actions menu styling</li>
-          <li>**Fixed**: Correctly display muted icon for muted subscriptions</li>
-          <li>**Fixed**: Database migration reliability improvements</li>
+          <li>New Filter Rules dialog and functionality</li>
+          <li>Unified aesthetics for Add Server/Account dialogs</li>
+          <li>Improved Server Actions menu styling</li>
+          <li>Correctly display muted icon for muted subscriptions</li>
+          <li>Database migration reliability improvements</li>
         </ul>
       </description>
     </release>
@@ -104,9 +108,9 @@
       <description>
         <p>Improved sandboxing and security with portal-based notifications.</p>
         <ul>
-          <li>**Changed**: Refactored notification system to use XDG Desktop Portal instead of direct D-Bus access</li>
-          <li>**Improved**: Better sandboxing following Flatpak best practices</li>
-          <li>**Removed**: No longer requires org.freedesktop.Notifications D-Bus permission</li>
+          <li>Refactored notification system to use XDG Desktop Portal instead of direct D-Bus access</li>
+          <li>Better sandboxing following Flatpak best practices</li>
+          <li>No longer requires org.freedesktop.Notifications D-Bus permission</li>
         </ul>
       </description>
     </release>
@@ -114,9 +118,9 @@
       <description>
         <p>Initial release of Ntfyr, a native client for ntfy.sh.</p>
         <ul>
-          <li>**New**: Subscriptions grouped by server for better organization</li>
-          <li>**New**: Unified server preferences with easy default server selection</li>
-          <li>**New**: Enhanced About dialog with credits and support links</li>
+          <li>Subscriptions grouped by server for better organization</li>
+          <li>Unified server preferences with easy default server selection</li>
+          <li>Enhanced About dialog with credits and support links</li>
           <li>Receive and send notifications via ntfy.sh or self-hosted servers</li>
           <li>Support for custom servers and basic authentication</li>
           <li>Markdown rendering for messages</li>
