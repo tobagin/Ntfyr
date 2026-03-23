@@ -52,6 +52,14 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.5.2" date="2026-03-23">
+      <description>
+        <p>Build cleanup release.</p>
+        <ul>
+          <li>Removed unused capnproto build dependency from Flatpak manifests</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.1" date="2026-03-23">
       <description>
         <p>Build fix release.</p>
