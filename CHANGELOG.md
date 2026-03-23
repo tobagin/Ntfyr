@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-23
+
+### ✨ New Features
+
+- **Date/Time Format**: Customizable timestamp format for message rows via Preferences (ISO, European, US, time-only, short).
+
+### 🐛 Fixed
+
+- **Window Focus**: Re-activating the app now always brings the window to the foreground (issue #7).
+- **Tray Icon**: System tray now shows a full-color icon on KDE dark themes instead of an invisible symbolic icon (issue #9).
+
+### 🔧 Changed
+
+- **Runtime**: Updated Flatpak runtime to GNOME 50.
+- **Dependencies**: Updated all Rust crates to latest versions (gtk4 0.11, libadwaita 0.9, ashpd 0.13, rand 0.10, oo7 0.6, rusqlite 0.39, reqwest 0.13, and more).
+- **Build**: Build script now uses a shared local Flatpak repo (`~/repo`) to avoid stale build artifacts.
+
 ## [0.4.1] - 2026-02-15
 
 ### Fixed

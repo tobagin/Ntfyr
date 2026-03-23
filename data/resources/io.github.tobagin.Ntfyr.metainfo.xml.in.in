@@ -52,6 +52,18 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.5.0" date="2026-03-23">
+      <description>
+        <p>✨ New features, bug fixes, and updated dependencies.</p>
+        <ul>
+          <li>New customizable date/time format preference for message timestamps</li>
+          <li>Fixed: app now brings window to foreground on re-activation</li>
+          <li>Fixed: tray icon is now visible on KDE dark themes</li>
+          <li>Updated Flatpak runtime to GNOME 50</li>
+          <li>Updated all Rust dependencies to latest versions</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.1" date="2026-02-15">
       <description>
         <p>Fixed AppStream metadata validation issues.</p>
