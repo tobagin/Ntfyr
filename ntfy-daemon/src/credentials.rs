@@ -45,7 +45,7 @@ impl LightKeyring for RealKeyring {
         &self,
         attributes: HashMap<&str, &str>,
     ) -> anyhow::Result<Vec<KeyringItem>> {
-        let items = self.keyring.search_items(attributes).await?;
+        let items = self.keyring.search_items(&attributes).await?;
 
         let mut out_items = vec![];
         for item in items {
@@ -65,13 +65,13 @@ impl LightKeyring for RealKeyring {
         replace: bool,
     ) -> anyhow::Result<()> {
         self.keyring
-            .create_item(label, attributes, secret, replace)
+            .create_item(label, &attributes, secret, replace)
             .await?;
         Ok(())
     }
 
     async fn delete(&self, attributes: HashMap<&str, &str>) -> anyhow::Result<()> {
-        self.keyring.delete(attributes).await?;
+        self.keyring.delete(&attributes).await?;
         Ok(())
     }
 }

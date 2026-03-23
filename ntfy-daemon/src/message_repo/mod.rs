@@ -96,7 +96,7 @@ impl Db {
         ",
         )?;
         let msgs: Result<Vec<String>, _> = stmt
-            .query_map(params![server, topic, since], |row| row.get(0))?
+            .query_map(params![server, topic, since as i64], |row| row.get(0))?
             .collect();
         msgs
     }
@@ -115,7 +115,7 @@ impl Db {
                 sub.reserved,
                 sub.muted,
                 sub.archived,
-                sub.read_until,
+                sub.read_until as i64,
                 rules,
                 schedule
             ],
@@ -155,7 +155,7 @@ impl Db {
                 muted: row.get(4)?,
                 archived: row.get(5)?,
                 symbolic_icon: row.get(6)?,
-                read_until: row.get(7)?,
+                read_until: row.get::<_, i64>(7)? as u64,
                 rules: rules_str.and_then(|s| serde_json::from_str(&s).ok()),
                 schedule: schedule_str.and_then(|s| serde_json::from_str(&s).ok()),
             })
@@ -178,7 +178,7 @@ impl Db {
                 sub.reserved,
                 sub.muted,
                 sub.archived,
-                sub.read_until,
+                sub.read_until as i64,
                 server_id,
                 sub.topic,
                 rules,
@@ -205,7 +205,7 @@ impl Db {
             SET read_until = ?3
             WHERE topic = ?2 AND server = ?1
             ",
-            params![server_id, topic, value],
+            params![server_id, topic, value as i64],
         )?;
         if res == 0 {
             return Err(Error::SubscriptionNotFound("updating read_until".into()));
@@ -242,7 +242,7 @@ impl Db {
         )?;
         let mut rows = stmt.query(params![server, topic])?;
         if let Some(row) = rows.next()? {
-            Ok(row.get(0)?)
+            Ok(row.get::<_, Option<i64>>(0)?.map(|v| v as u64))
         } else {
             Ok(None)
         }

@@ -1,7 +1,6 @@
 use std::cmp;
 use std::time::Duration;
 
-use rand::prelude::*;
 use tokio::time::sleep;
 
 pub struct WaitExponentialRandom {
@@ -45,7 +44,7 @@ impl WaitExponentialRandom {
     }
     pub fn next_delay(&self) -> Duration {
         let secs = (1 << self.i) * self.multiplier;
-        let secs = rand::thread_rng().gen_range(self.min.as_secs()..=secs);
+        let secs = rand::random_range(self.min.as_secs()..=secs);
         let dur = Duration::from_secs(secs);
         cmp::min(cmp::max(dur, self.min), self.max)
     }

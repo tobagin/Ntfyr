@@ -226,14 +226,12 @@ impl SubscriptionActor {
                     Aes256Gcm, Key, Nonce
                 };
                 use base64::{engine::general_purpose, Engine as _};
-                use rand::Rng;
-
                 let key_bytes = general_purpose::STANDARD.decode(key_str).map_err(|e| anyhow::anyhow!("Invalid key: {}", e))?;
                 let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
                 let cipher = Aes256Gcm::new(key);
-                
+
                 let mut nonce_bytes = [0u8; 12];
-                rand::thread_rng().fill(&mut nonce_bytes);
+                rand::fill(&mut nonce_bytes);
                 let nonce = Nonce::from_slice(&nonce_bytes);
 
                 let plaintext = msg.message.as_deref().unwrap_or("").as_bytes();

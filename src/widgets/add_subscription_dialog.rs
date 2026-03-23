@@ -95,10 +95,8 @@ impl AddSubscriptionDialog {
                                 set_valign: gtk::Align::Center,
                                 add_css_class: "flat",
                                 connect_clicked[topic_entry] => move |_| {
-                                    use rand::distributions::Alphanumeric;
-                                    use rand::{thread_rng, Rng};
-                                    let mut rng = thread_rng();
-                                    let chars: String = (0..10).map(|_| rng.sample(Alphanumeric) as char).collect();
+                                    use rand::distr::{Alphanumeric, SampleString};
+                                    let chars = Alphanumeric.sample_string(&mut rand::rng(), 10);
                                     topic_entry.set_text(&chars);
                                 }
                             }
