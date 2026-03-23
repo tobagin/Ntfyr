@@ -1,6 +1,6 @@
 id: io.github.tobagin.Ntfyr
 runtime: org.gnome.Platform
-runtime-version: '49'
+runtime-version: '50'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
@@ -12,6 +12,7 @@ finish-args:
   - --socket=wayland
   - --device=dri
   - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.secrets
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
   env:

@@ -4,6 +4,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 
 use gtk::{gdk, gio, glib};
+use crate::config::APP_ID;
 use gdk_pixbuf;
 use ntfy_daemon::models;
 use pulldown_cmark::{Event, Parser, Tag, TagEnd};
@@ -81,12 +82,13 @@ impl MessageRow {
         self.set_row_spacing(8);
         let mut row = 0;
 
+        let fmt = gio::Settings::new(APP_ID).string("datetime-format");
         let time = gtk::Label::builder()
             .label(
                 &chrono::DateTime::from_timestamp(msg.time as i64, 0)
                     .map(|time| {
                         time.with_timezone(&chrono::Local)
-                            .format("%Y-%m-%d %H:%M:%S")
+                            .format(fmt.as_str())
                             .to_string()
                     })
                     .unwrap_or_default(),

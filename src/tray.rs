@@ -16,14 +16,12 @@ pub struct NtfyrTray {
 
 impl ksni::Tray for NtfyrTray {
     fn icon_name(&self) -> String {
-        // We assume we have icons named after the APP_ID and APP_ID-new-message-symbolic?
-        // User said: "we have two tray icons to use in the icon folder, one to identify when there is new notifications and the standard."
-        // Karere uses: format!("{}-new-message-symbolic", app_id)
-        // I'll stick to that convention for now, or check file names later.
+        // Use full-color icons so the tray icon is visible on both light and dark
+        // panel backgrounds (symbolic icons render as dark on KDE dark themes).
         if self.has_unread.load(Ordering::Relaxed) {
-             format!("{}-new-notification-symbolic", APP_ID)
+            format!("{}-new-notification-symbolic", APP_ID)
         } else {
-             format!("{}-symbolic", APP_ID)
+            APP_ID.to_string()
         }
     }
 

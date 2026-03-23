@@ -17,6 +17,20 @@ template $NtfyrPreferences: Adw.PreferencesDialog {
         subtitle: "Newest messages at the top";
       }
 
+      Adw.ComboRow datetime_format_combo {
+        title: _("Date/Time Format");
+        subtitle: _("Format for message timestamps");
+        model: Gtk.StringList {
+          strings [
+            _("ISO (2024-11-15 21:58:33)"),
+            _("European (15.11.2024 21:58)"),
+            _("US (11/15/2024 21:58)"),
+            _("Time only (21:58:33)"),
+            _("Short (Nov 15 21:58)"),
+          ]
+        };
+      }
+
       Adw.SwitchRow show_default_server_switch {
         title: "Show Default Server";
         subtitle: "Show ntfy.sh in the server list";

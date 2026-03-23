@@ -21,6 +21,10 @@
       <default>false</default>
       <summary>Sort messages by descending date</summary>
     </key>
+    <key name="datetime-format" type="s">
+      <default>'%Y-%m-%d %H:%M:%S'</default>
+      <summary>Date and time format for message timestamps</summary>
+    </key>
     <key name="start-in-background" type="b">
       <default>false</default>
       <summary>Start in background</summary>

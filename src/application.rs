@@ -49,24 +49,23 @@ mod imp {
         fn activate(&self) {
             debug!("AdwApplication<NtfyrApplication>::activate");
             self.parent_activate();
-            
+
             let app = self.obj();
             let settings = gio::Settings::new(crate::config::APP_ID);
             let start_in_background = settings.boolean("start-in-background");
-            
-            // If the window already exists, it means the app was already running and 
-            // the user is activating it again (e.g. clicking the icon). In that case, 
-            // we should always present the window.
+
+            // already_running is true when this is a re-activation of a running instance
+            // (e.g. user clicks the app icon while it's in the tray).
+            let already_running = self.hold_guard.get().is_some();
             let has_window = app.imp().window.borrow().upgrade().is_some();
-            
-            if !start_in_background || has_window {
+
+            // On re-activation always bring the window forward.
+            // Only suppress the window on the very first launch when start-in-background is set.
+            if already_running || !start_in_background || has_window {
                 app.ensure_window_present();
             } else {
                 debug!("Starting in background as requested by preferences");
-                // We still need to ensure RPC is running if it's the first activation
-                if self.hold_guard.get().is_none() {
-                    app.ensure_rpc_running();
-                }
+                app.ensure_rpc_running();
             }
         }
 

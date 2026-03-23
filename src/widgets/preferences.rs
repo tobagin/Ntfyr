@@ -29,12 +29,14 @@ mod imp {
         pub show_default_server_switch: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub change_password_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub datetime_format_combo: TemplateChild<adw::ComboRow>,
         pub notifier: OnceCell<NtfyHandle>,
     }
 
     impl Default for NtfyrPreferences {
         fn default() -> Self {
-            let this = Self {
+            Self {
                 startup_switch: Default::default(),
                 sort_descending_switch: Default::default(),
                 startup_background_switch: Default::default(),
@@ -43,11 +45,9 @@ mod imp {
                 auto_lock_timeout: Default::default(),
                 show_default_server_switch: Default::default(),
                 change_password_row: Default::default(),
-
+                datetime_format_combo: Default::default(),
                 notifier: Default::default(),
-            };
-
-            this
+            }
         }
     }
 
@@ -103,6 +103,32 @@ impl NtfyrPreferences {
         settings
             .bind("sort-descending", &*obj.imp().sort_descending_switch, "active")
             .build();
+
+        // Datetime format combo
+        const DATETIME_FORMATS: &[&str] = &[
+            "%Y-%m-%d %H:%M:%S",
+            "%d.%m.%Y %H:%M",
+            "%m/%d/%Y %H:%M",
+            "%H:%M:%S",
+            "%b %d %H:%M",
+        ];
+        let current_fmt = settings.string("datetime-format");
+        let current_idx = DATETIME_FORMATS
+            .iter()
+            .position(|f| *f == current_fmt.as_str())
+            .unwrap_or(0) as u32;
+        obj.imp().datetime_format_combo.set_selected(current_idx);
+
+        let settings_clone = settings.clone();
+        obj.imp()
+            .datetime_format_combo
+            .connect_selected_notify(move |combo| {
+                let idx = combo.selected() as usize;
+                if let Some(fmt) = DATETIME_FORMATS.get(idx) {
+                    let _ = settings_clone.set_string("datetime-format", fmt);
+                }
+            });
+
         settings
             .bind("start-in-background", &*obj.imp().startup_background_switch, "active")
             .build();
