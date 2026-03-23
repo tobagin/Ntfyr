@@ -25,12 +25,6 @@ build-options:
     - --socket=x11
     - --share=network
 modules:
-  - name: capnproto
-    buildsystem: autotools
-    sources:
-      - type: archive
-        url: https://capnproto.org/capnproto-c++-1.4.0.tar.gz
-        sha256: fa02378ad522b318916b9ad928d1372fc9abd43dd1f4f0392e50450f5c87828f
   - name: ntfyr
     buildsystem: meson
     run-tests: true
