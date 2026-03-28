@@ -52,6 +52,14 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.5.3" date="2026-03-28">
+      <description>
+        <p>Bug fix release.</p>
+        <ul>
+          <li>Fixed HTTPS connections to private/self-hosted ntfy servers failing with "invalid URL, scheme is not http"</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.2" date="2026-03-23">
       <description>
         <p>Build cleanup release.</p>

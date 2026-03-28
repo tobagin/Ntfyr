@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-03-28
+
+### 🐛 Fixed
+
+- **HTTPS connections to private servers**: Fixed a regression where subscribing to self-hosted ntfy servers via HTTPS would fail with "invalid URL, scheme is not http". Caused by a missing `rustls` feature when updating the `reqwest` dependency from 0.12 to 0.13.
+
 ## [0.5.2] - 2026-03-23
 
 ### 🐛 Fixed

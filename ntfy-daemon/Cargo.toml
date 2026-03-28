@@ -16,7 +16,7 @@ anyhow = "1.0.71"
 tokio-stream = { version = "0.1.14", features = ["io-util", "time", "sync"] }
 rusqlite = "0.39"
 rand = "0.10"
-reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls-native-certs"]}
+reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls", "rustls-native-certs"]}
 url = { version = "2.4.0", features = ["serde"] }
 tracing = "0.1.37"
 thiserror = "2.0"
