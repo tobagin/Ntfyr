@@ -208,6 +208,18 @@ impl Subscription {
                 self.imp().messages.append(&glib::BoxedAnyObject::new(msg));
                 self.update_unread_count();
             }
+            ListenerEvent::MessagesReset {
+                read_until,
+                messages,
+            } => {
+                let imp = self.imp();
+                imp.read_until.replace(read_until);
+                imp.messages.remove_all();
+                for m in messages {
+                    imp.messages.append(&glib::BoxedAnyObject::new(m));
+                }
+                self.update_unread_count();
+            }
             ListenerEvent::ConnectionStateChanged(connection_state) => {
                 self.set_connection_state(connection_state);
             }
@@ -364,10 +376,7 @@ impl Subscription {
     }
     #[instrument(skip_all)]
     pub async fn clear_notifications(&self) -> anyhow::Result<()> {
-        let imp = self.imp();
-        imp.client.get().unwrap().clear_notifications().await?;
-        self.imp().messages.remove_all();
-
+        self.imp().client.get().unwrap().clear_notifications().await?;
         Ok(())
     }
 

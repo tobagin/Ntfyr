@@ -164,6 +164,61 @@ impl Db {
         Ok(subs?)
     }
 
+    fn server_id_or_insert_tx(
+        tx: &rusqlite::Transaction<'_>,
+        endpoint: &str,
+    ) -> rusqlite::Result<i64> {
+        match tx.query_row(
+            "SELECT id FROM server WHERE endpoint = ?1",
+            params![endpoint],
+            |row| row.get(0),
+        ) {
+            Ok(id) => Ok(id),
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                tx.execute(
+                    "INSERT INTO server (id, endpoint) VALUES (NULL, ?1)",
+                    params![endpoint],
+                )?;
+                Ok(tx.last_insert_rowid())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Single transaction: bump `read_until` then delete cached messages so we never persist
+    /// read state if the delete fails.
+    pub fn bump_read_until_and_clear_messages_atomic(
+        &mut self,
+        server: &str,
+        topic: &str,
+        bump: u64,
+    ) -> Result<(), Error> {
+        let mut conn = self.conn.write().unwrap();
+        let tx = conn.transaction().map_err(Error::Db)?;
+        let server_id = Self::server_id_or_insert_tx(&tx, server).map_err(Error::Db)?;
+        let n = tx.execute(
+            "UPDATE subscription
+            SET read_until = ?3
+            WHERE server = ?1 AND topic = ?2",
+            params![server_id, topic, bump as i64],
+        )
+        .map_err(Error::Db)?;
+        if n == 0 {
+            tx.rollback().ok();
+            return Err(Error::SubscriptionNotFound(
+                "bump read_until and clear messages".into(),
+            ));
+        }
+        tx.execute(
+            "DELETE FROM message
+            WHERE server = ?1 AND topic = ?2",
+            params![server_id, topic],
+        )
+        .map_err(Error::Db)?;
+        tx.commit().map_err(Error::Db)?;
+        Ok(())
+    }
+
     pub fn update_subscription(&mut self, sub: models::Subscription) -> Result<(), Error> {
         let server_id = self.get_or_insert_server(&sub.server)?;
         let rules = serde_json::to_string(&sub.rules).unwrap_or_default();
@@ -215,15 +270,12 @@ impl Db {
     pub fn delete_messages(&mut self, server: &str, topic: &str) -> Result<(), Error> {
         let server_id = self.get_or_insert_server(server).unwrap();
         let conn = self.conn.read().unwrap();
-        let res = conn.execute(
+        conn.execute(
             "DELETE FROM message
             WHERE topic = ?2 AND server = ?1
             ",
             params![server_id, topic],
         )?;
-        if res == 0 {
-            return Err(Error::SubscriptionNotFound("deleting messages".into()));
-        }
         Ok(())
     }
 
