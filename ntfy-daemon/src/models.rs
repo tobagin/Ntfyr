@@ -416,6 +416,9 @@ pub struct Notification {
     pub title: String,
     pub body: String,
     pub actions: Vec<Action>,
+    /// Stable id for desktop [`NotificationProxy`] (portal): one slot per subscription so new
+    /// messages replace the previous portal notification instead of growing shell badge counters.
+    pub portal_id: Option<String>,
 }
 
 pub trait NotificationProxy: Sync + Send {

@@ -3,6 +3,8 @@ subdir('resources')
 # Desktop file
 desktop_conf = configuration_data()
 desktop_conf.set('icon', application_id)
+# Full path: launchers often omit ~/.local/bin from PATH when Exec is not absolute.
+desktop_conf.set('bindir', join_paths(get_option('prefix'), get_option('bindir')))
 desktop_file = i18n.merge_file(
   type: 'desktop',
   input: configure_file(

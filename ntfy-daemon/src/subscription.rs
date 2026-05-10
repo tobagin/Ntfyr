@@ -1,6 +1,7 @@
 use crate::listener::{ListenerEvent, ListenerHandle};
 use crate::models::{self, ReceivedMessage};
 use crate::{Error, SharedEnv};
+use sha2::{Digest, Sha256};
 use tokio::select;
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tokio::task::spawn_local;
@@ -199,9 +200,44 @@ impl SubscriptionActor {
                             previous_events.push(ListenerEvent::ConnectionStateChanged(self.listener.state().await));
                             let _ = resp_tx.send((previous_events, self.broadcast_tx.subscribe()));
                         }
-                        SubscriptionCommand::ClearNotifications {resp_tx} => {
+                        SubscriptionCommand::ClearNotifications { resp_tx } => {
                             debug!(topic=?self.model.topic, "clearing notifications");
-                            let _ = resp_tx.send(self.env.db.delete_messages(&self.model.server, &self.model.topic).map_err(|e| anyhow::anyhow!(e)));
+                            let now_unix = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_secs())
+                                .unwrap_or(0);
+
+                            let last_in_db = self
+                                .env
+                                .db
+                                .get_last_message_time(&self.model.server, &self.model.topic)
+                                .ok()
+                                .flatten()
+                                .unwrap_or(0);
+
+                            // Once messages are cleared, the DB is empty and listen() would use
+                            // since=0 and replay the server's topic cache. Bump read_until to at least
+                            // max(last_local_message_time, now) so reconnect does not start from epoch.
+                            let bump = now_unix
+                                .max(last_in_db)
+                                .max(self.model.read_until);
+
+                            let res = self.env.db.bump_read_until_and_clear_messages_atomic(
+                                &self.model.server,
+                                &self.model.topic,
+                                bump,
+                            );
+                            if let Err(e) = res {
+                                let _ = resp_tx.send(Err(anyhow::anyhow!(e)));
+                                continue;
+                            }
+                            self.model.read_until = bump;
+                            let messages = self.stored_messages_snapshot();
+                            let _ = self.broadcast_tx.send(ListenerEvent::MessagesReset {
+                                read_until: bump,
+                                messages,
+                            });
+                            let _ = resp_tx.send(Ok(()));
                         }
                         SubscriptionCommand::UpdateReadUntil { timestamp, resp_tx } => {
                             debug!(topic=?self.model.topic, timestamp=timestamp, "updating read until timestamp");
@@ -329,6 +365,24 @@ impl SubscriptionActor {
         false
     }
 
+    fn stored_messages_snapshot(&self) -> Vec<ReceivedMessage> {
+        let messages = self
+            .env
+            .db
+            .list_messages(&self.model.server, &self.model.topic, 0)
+            .unwrap_or_default();
+        messages
+            .into_iter()
+            .filter_map(|row| match serde_json::from_str::<ReceivedMessage>(&row) {
+                Ok(m) => Some(m),
+                Err(e) => {
+                    error!(error = ?e, "error parsing stored message for snapshot");
+                    None
+                }
+            })
+            .collect()
+    }
+
     fn handle_msg_event(&mut self, msg: ReceivedMessage) {
         debug!(topic=?self.model.topic, "handling new message");
 
@@ -392,10 +446,12 @@ impl SubscriptionActor {
 
                 let title = { msg.notification_title(&self.model) };
 
+                let portal_id = portal_notification_id(&self.model.server, &self.model.topic);
                 let n = models::Notification {
                     title,
                     body: msg.display_message().as_deref().unwrap_or("").to_string(),
                     actions: msg.actions.clone(),
+                    portal_id,
                 };
 
                 info!(topic=?self.model.topic, "showing notification");
@@ -409,4 +465,15 @@ impl SubscriptionActor {
             let _ = self.broadcast_tx.send(ListenerEvent::Message(msg));
         }
     }
+}
+
+/// Stable Desktop portal notification id: one notification per (server, topic).
+fn portal_notification_id(server: &str, topic: &str) -> Option<String> {
+    let mut hasher = Sha256::new();
+    hasher.update(server.as_bytes());
+    hasher.update([0xff]);
+    hasher.update(topic.as_bytes());
+    let digest = hasher.finalize();
+    let slug: String = digest.iter().take(12).map(|b| format!("{:02x}", b)).collect();
+    Some(format!("io.github.tobagin.Ntfyr.z{slug}"))
 }

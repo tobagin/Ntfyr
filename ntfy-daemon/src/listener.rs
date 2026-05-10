@@ -48,6 +48,11 @@ pub enum ServerEvent {
 pub enum ListenerEvent {
     Message(models::ReceivedMessage),
     ConnectionStateChanged(ConnectionState),
+    /// Replace in-memory message list after a durable clear/read bump (serialized with other events).
+    MessagesReset {
+        read_until: u64,
+        messages: Vec<models::ReceivedMessage>,
+    },
 }
 
 #[derive(Clone)]

@@ -434,9 +434,12 @@ impl NtfyrApplication {
 
             let mut notification_counter = 0u32;
             while let Ok(n) = r.recv().await {
-                // Create a unique notification ID
-                notification_counter = notification_counter.wrapping_add(1);
-                let notification_id = format!("ntfyr-notification-{}", notification_counter);
+                let notification_id = if let Some(id) = n.portal_id.clone() {
+                    id
+                } else {
+                    notification_counter = notification_counter.wrapping_add(1);
+                    format!("ntfyr-notification-{notification_counter}")
+                };
 
                 // Build portal notification
                 let mut portal_notif = ashpd::desktop::notification::Notification::new(&n.title);
