@@ -457,12 +457,29 @@ pub fn start(
             .build()
             .unwrap();
 
-        // Create everything inside the new thread's runtime
+        // Create everything inside the new thread's runtime. Both stores fall back to
+        // an in-memory keyring when oo7 cannot reach the system Secret Service / Secret
+        // portal, but if even that fails (e.g. a transient I/O error during load) we
+        // still want the app to launch with empty stores rather than crash.
         let (credentials, keys) = rt.block_on(async move {
-            (
-                crate::credentials::Credentials::new().await.unwrap(),
-                crate::keys::Keys::new().await.unwrap(),
-            )
+            let credentials = match crate::credentials::Credentials::new().await {
+                Ok(c) => c,
+                Err(e) => {
+                    error!(error = %e, "Failed to initialize credentials store; continuing without saved accounts");
+                    crate::credentials::Credentials::new_nullable(vec![])
+                        .await
+                        .expect("nullable credentials should always succeed")
+                }
+            };
+            let keys = match crate::keys::Keys::new().await {
+                Ok(k) => k,
+                Err(e) => {
+                    error!(error = %e, "Failed to initialize topic key store; continuing without encrypted topic keys");
+                    crate::keys::Keys::new_nullable(std::collections::HashMap::new())
+                        .expect("nullable keys should always succeed")
+                }
+            };
+            (credentials, keys)
         });
 
         let env = SharedEnv {

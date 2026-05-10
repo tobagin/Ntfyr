@@ -52,6 +52,18 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.5.4" date="2026-05-10">
+      <description>
+        <p>Bug fix release.</p>
+        <ul>
+          <li>Fixed crash on startup when xdg-desktop-portal Secret backend is missing or returns an unusable master key; the keyring now falls back to the host Secret Service.</li>
+          <li>Fixed "Add account" failing with "Password (secret from portal) too short: 0" by retrying via Secret Service when the portal returns an unusable secret.</li>
+          <li>Tray icon now uses theme-aware symbolic SVGs so it stays visible on KDE Breeze Dark and other dark panels.</li>
+          <li>Clearing notifications no longer replays the server-side topic cache after a restart.</li>
+          <li>Desktop portal notifications use a stable per-(server, topic) id, preventing inflated launcher badge counts.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.3" date="2026-03-28">
       <description>
         <p>Bug fix release.</p>

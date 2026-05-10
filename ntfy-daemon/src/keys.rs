@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-
-
-use crate::credentials::{KeyringItem, LightKeyring, NullableKeyring, RealKeyring};
+use crate::credentials::{KeyringItem, LightKeyring, NullableKeyring, build_keyring};
 
 #[derive(Clone)]
 pub struct Keys {
@@ -14,12 +12,9 @@ pub struct Keys {
 
 impl Keys {
     pub async fn new() -> anyhow::Result<Self> {
+        let keyring = build_keyring("topic_keys").await;
         let mut this = Self {
-            keyring: Arc::new(RealKeyring {
-                keyring: oo7::Keyring::new()
-                    .await
-                    .expect("Failed to start Secret Service"),
-            }),
+            keyring,
             keys: Default::default(),
         };
         this.load().await?;

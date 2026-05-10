@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg height="16px" viewBox="0 0 16 16" width="16px" xmlns="http://www.w3.org/2000/svg">
-    <g fill="none" stroke="#241f31">
-        <path d="m 2 2.324219 h 12 v 9 h -7.242188 l -2.6875 2.351562 v -2.351562 h -2.070312 z m 0 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-        <g stroke-linecap="square">
-            <path d="m 5.289062 8.355469 l 1.613282 -1.699219 l -1.613282 -1.78125"/>
-            <path d="m 8.613281 8.5625 h 2.128906"/>
-        </g>
+<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 16 16">
+  <defs>
+    <style id="current-color-scheme" type="text/css">.ColorScheme-Text { color: #232629; }</style>
+  </defs>
+  <g class="ColorScheme-Text" fill="none" stroke="currentColor">
+    <path d="m 2 2.324219 h 12 v 9 h -7.242188 l -2.6875 2.351562 v -2.351562 h -2.070312 z m 0 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+    <g stroke-linecap="square">
+      <path d="m 5.289062 8.355469 l 1.613282 -1.699219 l -1.613282 -1.78125"/>
+      <path d="m 8.613281 8.5625 h 2.128906"/>
     </g>
+  </g>
 </svg>

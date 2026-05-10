@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-05-10
+
+### 🐛 Fixed
+
+- **Startup crash on missing Secret portal (issue #12)**: The keyring no longer panics when `org.freedesktop.portal.Secret` is unavailable or unusable. It now falls back to the host Secret Service over DBus, and finally to a non-persistent in-memory store, so the app keeps launching.
+- **Add account fails with "Password (secret from portal) too short: 0" (issue #14)**: Same fallback path covers the case where the portal returns an unusable master key — account creation retries via Secret Service.
+- **Tray icon invisible on dark panels (issue #13)**: Symbolic tray SVGs now use the KDE `ColorScheme-Text` / `ColorScheme-Highlight` idiom and `currentColor`, so the tray icon is themed by the panel on KDE Breeze Dark and other dark themes.
+- **Notification replay after Clear (PR #15)**: Clearing notifications now atomically bumps `read_until` and deletes cached messages in a single transaction, so reconnecting no longer replays the server-side topic cache from epoch.
+- **Inflated launcher badge counters (PR #15)**: Desktop portal notifications use a stable per-(server, topic) id, so new alerts replace the previous portal notification instead of accumulating shell badge entries.
+- **Empty topic clear errored (PR #15)**: `delete_messages` no longer fails when no rows match.
+
+### 🔧 Changed
+
+- **Desktop file `Exec` (PR #15)**: Uses the absolute `@bindir@/ntfyr` path so launchers that drop `~/.local/bin` from `PATH` still start the app.
+
 ## [0.5.3] - 2026-03-28
 
 ### 🐛 Fixed

@@ -16,12 +16,13 @@ pub struct NtfyrTray {
 
 impl ksni::Tray for NtfyrTray {
     fn icon_name(&self) -> String {
-        // Use full-color icons so the tray icon is visible on both light and dark
-        // panel backgrounds (symbolic icons render as dark on KDE dark themes).
+        // Symbolic SVGs use the KDE `ColorScheme-Text` / `ColorScheme-Highlight`
+        // stylesheet idiom plus `currentColor`, so Plasma recolors them for the
+        // active panel theme and GTK inherits the foreground color too.
         if self.has_unread.load(Ordering::Relaxed) {
             format!("{}-new-notification-symbolic", APP_ID)
         } else {
-            APP_ID.to_string()
+            format!("{}-symbolic", APP_ID)
         }
     }
 
