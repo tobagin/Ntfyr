@@ -52,6 +52,14 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.6.1" date="2026-06-03">
+      <description>
+        <p>Maintenance release.</p>
+        <ul>
+          <li>Updated all Rust dependencies to their latest compatible versions.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.0" date="2026-06-03">
       <description>
         <p>Feature release.</p>
