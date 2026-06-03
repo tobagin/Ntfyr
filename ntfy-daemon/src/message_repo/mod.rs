@@ -37,6 +37,10 @@ impl Db {
             conn.execute_batch(include_str!("./migrations/01.sql"))?;
             conn.pragma_update(None, "user_version", 2)?;
         }
+        if version < 3 {
+            conn.execute_batch(include_str!("./migrations/02.sql"))?;
+            conn.pragma_update(None, "user_version", 3)?;
+        }
         Ok(())
     }
     fn get_or_insert_server(&mut self, server: &str) -> Result<i64> {
@@ -107,7 +111,7 @@ impl Db {
         let schedule = serde_json::to_string(&sub.schedule).unwrap_or_default();
 
         self.conn.read().unwrap().execute(
-            "INSERT INTO subscription (server, topic, display_name, reserved, muted, archived, read_until, rules, schedule) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO subscription (server, topic, display_name, reserved, muted, archived, symbolic_icon, read_until, listen_since, rules, schedule) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 server_id,
                 sub.topic,
@@ -115,7 +119,9 @@ impl Db {
                 sub.reserved,
                 sub.muted,
                 sub.archived,
+                sub.symbolic_icon,
                 sub.read_until as i64,
+                sub.listen_since as i64,
                 rules,
                 schedule
             ],
@@ -137,15 +143,15 @@ impl Db {
     pub fn list_subscriptions(&mut self) -> Result<Vec<models::Subscription>, Error> {
         let conn = self.conn.read().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT server.endpoint, sub.topic, sub.display_name, sub.reserved, sub.muted, sub.archived, sub.symbolic_icon, sub.read_until, sub.rules, sub.schedule
+            "SELECT server.endpoint, sub.topic, sub.display_name, sub.reserved, sub.muted, sub.archived, sub.symbolic_icon, sub.read_until, sub.listen_since, sub.rules, sub.schedule
             FROM subscription sub
             JOIN server ON server.id = sub.server
             ORDER BY server.endpoint, sub.display_name, sub.topic
             ",
         )?;
         let rows = stmt.query_map(params![], |row| {
-            let rules_str: Option<String> = row.get(8)?;
-            let schedule_str: Option<String> = row.get(9)?;
+            let rules_str: Option<String> = row.get(9)?;
+            let schedule_str: Option<String> = row.get(10)?;
             
             Ok(models::Subscription {
                 server: row.get(0)?,
@@ -156,6 +162,7 @@ impl Db {
                 archived: row.get(5)?,
                 symbolic_icon: row.get(6)?,
                 read_until: row.get::<_, i64>(7)? as u64,
+                listen_since: row.get::<_, i64>(8)? as u64,
                 rules: rules_str.and_then(|s| serde_json::from_str(&s).ok()),
                 schedule: schedule_str.and_then(|s| serde_json::from_str(&s).ok()),
             })
@@ -198,7 +205,7 @@ impl Db {
         let server_id = Self::server_id_or_insert_tx(&tx, server).map_err(Error::Db)?;
         let n = tx.execute(
             "UPDATE subscription
-            SET read_until = ?3
+            SET read_until = ?3, listen_since = ?3
             WHERE server = ?1 AND topic = ?2",
             params![server_id, topic, bump as i64],
         )
@@ -226,18 +233,20 @@ impl Db {
 
         let res = self.conn.read().unwrap().execute(
             "UPDATE subscription
-            SET display_name = ?1, reserved = ?2, muted = ?3, archived = ?4, read_until = ?5, rules = ?8, schedule = ?9
-            WHERE server = ?6 AND topic = ?7",
+            SET display_name = ?1, reserved = ?2, muted = ?3, archived = ?4, symbolic_icon = ?5, read_until = ?6, listen_since = ?11, rules = ?9, schedule = ?10
+            WHERE server = ?7 AND topic = ?8",
             params![
                 sub.display_name,
                 sub.reserved,
                 sub.muted,
                 sub.archived,
+                sub.symbolic_icon,
                 sub.read_until as i64,
                 server_id,
                 sub.topic,
                 rules,
-                schedule
+                schedule,
+                sub.listen_since as i64,
             ],
         )?;
         if res == 0 {
@@ -298,5 +307,79 @@ impl Db {
         } else {
             Ok(None)
         }
+    }
+}
+
+pub(crate) fn compute_listen_since(db_max_message_time: u64, listen_since: u64) -> u64 {
+    db_max_message_time.max(listen_since)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models;
+
+    fn sample_message_json(topic: &str, id: &str, time: u64) -> String {
+        format!(
+            r#"{{"id":"{id}","time":{time},"event":"message","topic":"{topic}","message":"hello"}}"#
+        )
+    }
+
+    #[test]
+    fn compute_listen_since_prefers_local_cache() {
+        assert_eq!(compute_listen_since(100, 0), 100);
+        assert_eq!(compute_listen_since(100, 200), 200);
+    }
+
+    #[test]
+    fn new_subscription_with_read_until_still_fetches_history() {
+        let mut db = Db::connect(":memory:").unwrap();
+        let read_until = 1_700_000_000;
+        let sub = models::Subscription::builder("alerts".into())
+            .server("https://ntfy.example".into())
+            .read_until(read_until)
+            .build()
+            .unwrap();
+        db.insert_subscription(sub.clone()).unwrap();
+
+        let db_max = db
+            .get_last_message_time(&sub.server, &sub.topic)
+            .unwrap()
+            .unwrap_or(0);
+        let since = compute_listen_since(db_max, sub.listen_since);
+
+        assert_eq!(sub.read_until, read_until);
+        assert_eq!(sub.listen_since, 0);
+        assert_eq!(since, 0);
+    }
+
+    #[test]
+    fn cleared_subscription_skips_replayed_history() {
+        let mut db = Db::connect(":memory:").unwrap();
+        let sub = models::Subscription::builder("alerts".into())
+            .server("https://ntfy.example".into())
+            .build()
+            .unwrap();
+        db.insert_subscription(sub.clone()).unwrap();
+
+        let msg = sample_message_json("alerts", "abc", 1_700_000_010);
+        db.insert_message(&sub.server, &msg).unwrap();
+
+        db.bump_read_until_and_clear_messages_atomic(&sub.server, &sub.topic, 1_700_000_050)
+            .unwrap();
+
+        let stored = db.list_subscriptions().unwrap().pop().unwrap();
+        assert_eq!(stored.listen_since, 1_700_000_050);
+        assert!(db
+            .list_messages(&sub.server, &sub.topic, 0)
+            .unwrap()
+            .is_empty());
+
+        let db_max = db
+            .get_last_message_time(&sub.server, &sub.topic)
+            .unwrap()
+            .unwrap_or(0);
+        let since = compute_listen_since(db_max, stored.listen_since);
+        assert_eq!(since, 1_700_000_050);
     }
 }

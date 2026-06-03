@@ -166,6 +166,7 @@ impl SubscriptionActor {
                             new_model.server = self.model.server.clone();
                             new_model.topic = self.model.topic.clone();
                             new_model.read_until = self.model.read_until;
+                            new_model.listen_since = self.model.listen_since;
                             let res = self.env.db.update_subscription(new_model.clone());
                             if let Ok(_) = res {
                                 self.model = new_model;
@@ -216,8 +217,9 @@ impl SubscriptionActor {
                                 .unwrap_or(0);
 
                             // Once messages are cleared, the DB is empty and listen() would use
-                            // since=0 and replay the server's topic cache. Bump read_until to at least
-                            // max(last_local_message_time, now) so reconnect does not start from epoch.
+                            // since=0 and replay the server's topic cache. Bump read_until and
+                            // listen_since to at least max(last_local_message_time, now) so
+                            // reconnect does not start from epoch.
                             let bump = now_unix
                                 .max(last_in_db)
                                 .max(self.model.read_until);
@@ -232,6 +234,7 @@ impl SubscriptionActor {
                                 continue;
                             }
                             self.model.read_until = bump;
+                            self.model.listen_since = bump;
                             let messages = self.stored_messages_snapshot();
                             let _ = self.broadcast_tx.send(ListenerEvent::MessagesReset {
                                 read_until: bump,

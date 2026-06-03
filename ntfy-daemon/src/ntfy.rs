@@ -318,7 +318,7 @@ impl NtfyActor {
             .unwrap_or(None)
             .unwrap_or(0);
 
-        let since = db_max_message_time.max(sub.read_until);
+        let since = crate::message_repo::compute_listen_since(db_max_message_time, sub.listen_since);
 
         let listener = ListenerHandle::new(ListenerConfig {
             http_client: self.env.http_client.clone(),
@@ -524,10 +524,9 @@ pub fn start(
 mod tests {
     use std::time::Duration;
 
-    use models::{OutgoingMessage, ReceivedMessage};
-    use tokio::time::sleep;
-
     use crate::ListenerEvent;
+    use models::{NullNetworkMonitor, NullNotifier, OutgoingMessage};
+    use tokio::time::sleep;
 
     use super::*;
 
@@ -552,23 +551,103 @@ mod tests {
             let subscription_handle = handle.subscribe(server, topic).await.unwrap();
 
             // Publish a message
-            let message = serde_json::to_string(&OutgoingMessage {
+            let message = OutgoingMessage {
                 topic: topic.to_string(),
                 ..Default::default()
-            })
-            .unwrap();
-            let result = subscription_handle.publish(message).await;
+            };
+            let result = subscription_handle.publish(message, false).await;
             assert!(result.is_ok());
 
             sleep(Duration::from_millis(250)).await;
 
             // Attach to the subscription and check if the message is received and stored
-            let (events, receiver) = subscription_handle.attach().await;
+            let (events, _receiver) = subscription_handle.attach().await;
             dbg!(&events);
             assert!(events.iter().any(|event| match event {
                 ListenerEvent::Message(msg) => msg.topic == topic,
                 _ => false,
             }));
         });
+    }
+
+    #[test]
+    #[ignore = "hits the live ntfy.sh server; run with: cargo test -p ntfy-daemon integration_subscribe_fetches_server_history -- --ignored"]
+    fn integration_subscribe_fetches_server_history() {
+        let topic = format!("ntfyr-hist-it-{}", std::process::id());
+        let dbpath = std::env::temp_dir().join(format!("ntfyr-it-{topic}.sqlite"));
+        let _ = std::fs::remove_file(&dbpath);
+
+        let handle = start(
+            dbpath.to_str().unwrap(),
+            Arc::new(NullNotifier::new()),
+            Arc::new(NullNetworkMonitor::new()),
+        )
+        .unwrap();
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        rt.block_on(async {
+            let server = models::DEFAULT_SERVER;
+            let publish_url = format!("{server}/{topic}");
+
+            let client = reqwest::Client::new();
+            client
+                .post(&publish_url)
+                .body("historical one")
+                .header("Title", "History 1")
+                .send()
+                .await
+                .expect("first publish")
+                .error_for_status()
+                .expect("first publish status");
+            client
+                .post(&publish_url)
+                .body("historical two")
+                .header("Title", "History 2")
+                .send()
+                .await
+                .expect("second publish")
+                .error_for_status()
+                .expect("second publish status");
+
+            let subscription_handle = handle
+                .subscribe(server, &topic)
+                .await
+                .expect("subscribe");
+
+            sleep(Duration::from_secs(3)).await;
+
+            let (events, mut rx) = subscription_handle.attach().await;
+            let mut messages: Vec<_> = events
+                .into_iter()
+                .filter_map(|event| match event {
+                    ListenerEvent::Message(msg) => Some(msg),
+                    _ => None,
+                })
+                .collect();
+
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+            while messages.len() < 2 && tokio::time::Instant::now() < deadline {
+                if let Ok(Ok(ListenerEvent::Message(msg))) =
+                    tokio::time::timeout(Duration::from_secs(1), rx.recv()).await
+                {
+                    messages.push(msg);
+                }
+            }
+
+            assert!(
+                messages.len() >= 2,
+                "expected cached server messages, got {messages:?}"
+            );
+
+            let model = subscription_handle.model().await;
+            assert_eq!(model.listen_since, 0);
+            assert!(model.read_until > 0);
+        });
+
+        let _ = std::fs::remove_file(dbpath);
     }
 }

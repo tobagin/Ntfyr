@@ -205,6 +205,11 @@ pub struct Subscription {
     pub reserved: bool,
     pub symbolic_icon: Option<String>,
     pub read_until: u64,
+    /// Earliest server message timestamp we still want to skip when reconnecting.
+    /// Separate from `read_until` so new subscriptions can fetch topic history while
+    /// marking pre-existing messages as read.
+    #[serde(default)]
+    pub listen_since: u64,
     #[serde(default)]
     pub rules: Option<Vec<FilterRule>>,
     #[serde(default)]
@@ -258,6 +263,7 @@ pub struct SubscriptionBuilder {
     symbolic_icon: Option<String>,
     display_name: String,
     read_until: u64,
+    listen_since: u64,
     rules: Option<Vec<FilterRule>>,
     schedule: Option<Schedule>,
 }
@@ -273,6 +279,7 @@ impl SubscriptionBuilder {
             symbolic_icon: None,
             display_name: String::new(),
             read_until: 0,
+            listen_since: 0,
             rules: None,
             schedule: None,
         }
@@ -313,6 +320,11 @@ impl SubscriptionBuilder {
         self
     }
 
+    pub fn listen_since(mut self, listen_since: u64) -> Self {
+        self.listen_since = listen_since;
+        self
+    }
+
     pub fn rules(mut self, rules: Option<Vec<FilterRule>>) -> Self {
         self.rules = rules;
         self
@@ -333,6 +345,7 @@ impl SubscriptionBuilder {
             symbolic_icon: self.symbolic_icon,
             display_name: self.display_name,
             read_until: self.read_until,
+            listen_since: self.listen_since,
             rules: self.rules,
             schedule: self.schedule,
         };

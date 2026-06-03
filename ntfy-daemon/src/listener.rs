@@ -384,11 +384,22 @@ impl ListenerHandle {
 mod tests {
     use models::Subscription;
     use serde_json::json;
-    use task::LocalSet;
+    use tokio::task::LocalSet;
 
     use crate::http_client::NullableClient;
 
     use super::*;
+
+    async fn test_listener_config(http_client: HttpClient) -> ListenerConfig {
+        ListenerConfig {
+            http_client,
+            credentials: Credentials::new_nullable(vec![]).await.unwrap(),
+            keys: crate::keys::Keys::new_nullable(std::collections::HashMap::new()).unwrap(),
+            endpoint: "http://localhost".to_string(),
+            topic: "test".to_string(),
+            since: 0,
+        }
+    }
 
     #[tokio::test]
     async fn test_listener_reconnects_on_http_status_500() {
@@ -403,15 +414,7 @@ mod tests {
                         .build();
                     nullable
                 });
-                let credentials = Credentials::new_nullable(vec![]).await.unwrap();
-
-                let config = ListenerConfig {
-                    http_client,
-                    credentials,
-                    endpoint: "http://localhost".to_string(),
-                    topic: "test".to_string(),
-                    since: 0,
-                };
+                let config = test_listener_config(http_client).await;
 
                 let listener = ListenerHandle::new(config.clone());
                 let items: Vec<_> = listener.events.take(3).collect().await;
@@ -442,15 +445,7 @@ mod tests {
                         .build();
                     nullable
                 });
-                let credentials = Credentials::new_nullable(vec![]).await.unwrap();
-
-                let config = ListenerConfig {
-                    http_client,
-                    credentials,
-                    endpoint: "http://localhost".to_string(),
-                    topic: "test".to_string(),
-                    since: 0,
-                };
+                let config = test_listener_config(http_client).await;
 
                 let listener = ListenerHandle::new(config.clone());
                 let items: Vec<_> = listener.events.take(3).collect().await;
@@ -464,6 +459,45 @@ mod tests {
                         ListenerEvent::ConnectionStateChanged(ConnectionState::Connected { .. }),
                     ]
                 ));
+            });
+        local_set.await;
+    }
+
+    #[tokio::test]
+    async fn test_listener_replays_cached_messages_from_since_zero() {
+        let local_set = LocalSet::new();
+        local_set
+            .spawn_local(async {
+                let body = format!(
+                    "{}\n{}\n",
+                    json!({"id":"open","time":1_700_000_000,"event":"open","topic":"test"}),
+                    json!({"id":"old1","time":1_700_000_001,"event":"message","topic":"test","message":"old"})
+                );
+
+                let http_client = HttpClient::new_nullable({
+                    let url = Subscription::build_url("http://localhost", "test", 0).unwrap();
+                    NullableClient::builder()
+                        .text_response(url.clone(), 200, body)
+                        .build()
+                });
+                let config = test_listener_config(http_client).await;
+
+                let listener = ListenerHandle::new(config);
+                let items: Vec<_> = listener.events.take(3).collect().await;
+
+                assert!(matches!(
+                    &items[..],
+                    &[
+                        ListenerEvent::ConnectionStateChanged(ConnectionState::Unitialized),
+                        ListenerEvent::ConnectionStateChanged(ConnectionState::Connected),
+                        ListenerEvent::Message(_),
+                    ]
+                ));
+                if let ListenerEvent::Message(msg) = &items[2] {
+                    assert_eq!(msg.id, "old1");
+                } else {
+                    panic!("expected historical message");
+                }
             });
         local_set.await;
     }
