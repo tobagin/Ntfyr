@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-03
+
+### ✨ Added
+
+- **UI language selector (PR #18)**: Choose the interface language in Preferences, independent of the system locale. Changing it prompts for a restart to re-render all strings.
+- **New translations**: European Portuguese (pt_PT), Brazilian Portuguese (pt_BR), and British English (en_GB), alongside the existing Russian, German, Spanish, and French. The English entry is split into US (source) and UK variants.
+
+### 🐛 Fixed
+
+- **Missing notification history on first subscription (PR #17)**: New subscriptions now load the server's topic cache (`since=0`) while still marking pre-existing messages as read, so history appears without spamming desktop notifications. A separate `listen_since` cursor keeps cleared notifications from being replayed after reconnect.
+- **Window not shown on launcher reactivation (PR #16)**: Launching the app while a background instance is already running now always presents the window; `start-in-background` only suppresses it on first launch.
+
+### 🔧 Changed
+
+- **Packaging (PR #18)**: The custom-LOCALEDIR catalog copy is derived from the installed `.mo` set instead of a hardcoded language list, so future languages are bundled automatically.
+
 ## [0.5.4] - 2026-05-10
 
 ### 🐛 Fixed

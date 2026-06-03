@@ -52,6 +52,17 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.6.0" date="2026-06-03">
+      <description>
+        <p>Feature release.</p>
+        <ul>
+          <li>Added a UI language selector in Preferences to choose the interface language independently of the system locale.</li>
+          <li>Added European Portuguese, Brazilian Portuguese, and British English translations, alongside Russian, German, Spanish, and French.</li>
+          <li>New subscriptions now load the server's topic history on first connect without replaying it as desktop notifications.</li>
+          <li>The window is now always presented when launching the app while a background instance is running.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.4" date="2026-05-10">
       <description>
         <p>Bug fix release.</p>
