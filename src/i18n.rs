@@ -29,13 +29,18 @@ pub fn restart_application() {
 pub const LANG_SYSTEM: &str = "system";
 
 /// Language codes stored in GSettings (`interface-language`).
-pub const LANGUAGE_CODES: &[&str] = &["system", "en", "ru", "de", "es", "fr"];
+pub const LANGUAGE_CODES: &[&str] = &[
+    "system", "en_US", "en_GB", "pt_PT", "pt_BR", "ru", "de", "es", "fr",
+];
 
 /// Native names for the language picker (not translated), except the system entry.
 pub fn language_labels() -> Vec<String> {
     vec![
         gettext("System default").to_string(),
-        "English".to_string(),
+        "English (US)".to_string(),
+        "English (UK)".to_string(),
+        "Português (Portugal)".to_string(),
+        "Português (Brasil)".to_string(),
         "Русский".to_string(),
         "Deutsch".to_string(),
         "Español".to_string(),
@@ -62,7 +67,12 @@ pub fn apply_language_code(code: &str) {
     unsafe {
         match code {
             LANG_SYSTEM => std::env::remove_var("LANGUAGE"),
-            "en" => std::env::set_var("LANGUAGE", "en"),
+            // en_US is the source language: no catalog, strings come from the msgids.
+            "en_US" => std::env::set_var("LANGUAGE", "en_US"),
+            // en_GB only overrides British spellings; the rest already mirror the source.
+            "en_GB" => std::env::set_var("LANGUAGE", "en_GB:en_US"),
+            "pt_PT" => std::env::set_var("LANGUAGE", "pt_PT"),
+            "pt_BR" => std::env::set_var("LANGUAGE", "pt_BR"),
             "ru" => std::env::set_var("LANGUAGE", "ru"),
             "de" => std::env::set_var("LANGUAGE", "de"),
             "es" => std::env::set_var("LANGUAGE", "es"),

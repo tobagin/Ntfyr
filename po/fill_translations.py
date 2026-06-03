@@ -7,8 +7,17 @@ import re
 from pathlib import Path
 
 from fill_translations_data import DE, ES, FR, RU
+from extra_translations_data import EN_GB, PT_BR, PT_PT
 
-LANG_MAP = {"ru": RU, "de": DE, "es": ES, "fr": FR}
+LANG_MAP = {
+    "ru": RU,
+    "de": DE,
+    "es": ES,
+    "fr": FR,
+    "pt_PT": PT_PT,
+    "pt_BR": PT_BR,
+    "en_GB": EN_GB,
+}
 
 
 def unescape_po(s: str) -> str:
