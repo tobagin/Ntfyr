@@ -2,7 +2,7 @@ using Gtk 4.0;
 using Adw 1;
 
 template $FilterRuleDialog: Adw.Dialog {
-    title: "Add Filter Rule";
+    title: _("Add Filter Rule");
     content-width: 400;
     content-height: 300;
 
@@ -13,13 +13,13 @@ template $FilterRuleDialog: Adw.Dialog {
 
             [start]
             Gtk.Button cancel_btn {
-                label: "Cancel";
+                label: _("Cancel");
                 action-name: "window.close";
             }
 
             [end]
             Gtk.Button add_btn {
-                label: "Add";
+                label: _("Add");
 
                 css-classes: [
                     "suggested-action",
@@ -29,24 +29,24 @@ template $FilterRuleDialog: Adw.Dialog {
 
         content: Adw.PreferencesPage {
             Adw.PreferencesGroup {
-                title: "Rule Details";
+                title: _("Rule Details");
 
                 Adw.EntryRow name_entry {
-                    title: "Name";
+                    title: _("Name");
                 }
 
                 Adw.EntryRow regex_entry {
-                    title: "Regex Pattern";
+                    title: _("Regex Pattern");
                 }
 
                 Adw.ComboRow action_combo {
-                    title: "Action";
+                    title: _("Action");
 
                     model: Gtk.StringList {
                         strings [
-                            "Mute",
-                            "Discard",
-                            "Mark Read",
+                            _("Mute"),
+                            _("Discard"),
+                            _("Mark Read"),
                         ]
                     };
                 }

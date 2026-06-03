@@ -3,6 +3,7 @@ use std::cell::RefCell;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gettextrs::gettext;
 use glib::subclass::Signal;
 use gtk::gio;
 use gtk::glib;
@@ -63,8 +64,10 @@ impl AddSubscriptionDialog {
         let imp = self.imp();
         let obj = self.clone();
         let server_url = imp.server_url.get().unwrap();
-        
-        obj.set_title("Subscribe To Topic");
+        let subscribing_label =
+            gettext("Subscribing to topic on {}").replacen("{}", server_url, 1);
+
+        obj.set_title(&gettext("Subscribe To Topic"));
 
         relm4_macros::view! {
             toolbar_view = adw::ToolbarView {
@@ -79,7 +82,7 @@ impl AddSubscriptionDialog {
                     set_margin_bottom: 12,
                     append = &gtk::Label {
                         add_css_class: "dim-label",
-                        set_label: &format!("Subscribing to topic on {}", server_url),
+                        set_label: &subscribing_label,
                         set_wrap: true,
                         set_xalign: 0.0,
                         set_halign: gtk::Align::Center,
@@ -87,11 +90,11 @@ impl AddSubscriptionDialog {
                     append = &gtk::ListBox {
                         add_css_class: "boxed-list",
                         append: topic_entry = &adw::EntryRow {
-                            set_title: "Topic",
+                            set_title: &gettext("Topic"),
                             set_activates_default: true,
                             add_suffix = &gtk::Button {
                                 set_icon_name: "dice3-symbolic",
-                                set_tooltip_text: Some("Generate name"),
+                                set_tooltip_text: Some(&gettext("Generate name")),
                                 set_valign: gtk::Align::Center,
                                 add_css_class: "flat",
                                 connect_clicked[topic_entry] => move |_| {
@@ -103,7 +106,7 @@ impl AddSubscriptionDialog {
                         },
                     },
                     append: sub_btn = &gtk::Button {
-                        set_label: "Subscribe",
+                        set_label: &gettext("Subscribe"),
                         add_css_class: "suggested-action",
                         add_css_class: "pill",
                         set_halign: gtk::Align::Center,

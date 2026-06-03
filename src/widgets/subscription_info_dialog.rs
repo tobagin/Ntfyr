@@ -3,8 +3,10 @@ use std::cell::RefCell;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 
+use gettextrs::gettext;
 use gtk::gio;
 use gtk::glib;
+use ntfy_daemon::models::FilterAction;
 
 use crate::error::*;
 
@@ -18,6 +20,10 @@ mod imp {
         pub subscription: RefCell<Option<crate::subscription::Subscription>>,
         #[template_child]
         pub display_name_entry: TemplateChild<adw::EntryRow>,
+        #[template_child]
+        pub topic_info_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub server_info_row: TemplateChild<adw::ActionRow>,
         #[template_child]
         pub muted_switch_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
@@ -64,6 +70,8 @@ mod imp {
             let sub = this.subscription().unwrap();
             self.display_name_entry
                 .set_text(&sub.display_name());
+            self.topic_info_row.set_subtitle(&sub.topic());
+            self.server_info_row.set_subtitle(&sub.server());
             self.muted_switch_row
                 .set_active(sub.muted());
             
@@ -194,10 +202,6 @@ impl SubscriptionInfoDialog {
         ((idx + 1) % 7) as u8
     }
 
-    fn model_day_to_ui_idx(day: u8) -> i32 {
-        ((day + 6) % 7) as i32
-    }
-
     fn init_schedule_ui(&self, sub: &crate::subscription::Subscription) {
         let imp = self.imp();
         if let Some(schedule) = sub.get_schedule() {
@@ -275,11 +279,23 @@ impl SubscriptionInfoDialog {
         }
     }
 
+    fn filter_action_label(action: &FilterAction) -> String {
+        match action {
+            FilterAction::Mute => gettext("Mute"),
+            FilterAction::Discard => gettext("Discard"),
+            FilterAction::MarkRead => gettext("Mark Read"),
+        }
+        .to_string()
+    }
+
     fn add_rule_row(&self, rule: &ntfy_daemon::models::FilterRule) {
         let imp = self.imp();
+        let subtitle = gettext("Regex: {} -> {}")
+            .replacen("{}", &rule.regex, 1)
+            .replacen("{}", &Self::filter_action_label(&rule.action), 1);
         let row = adw::ActionRow::builder()
             .title(&rule.name)
-            .subtitle(format!("Regex: {} -> Action: {:?}", rule.regex, rule.action))
+            .subtitle(subtitle)
             .build();
         
         // Add delete button

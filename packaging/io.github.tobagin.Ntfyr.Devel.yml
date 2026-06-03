@@ -30,6 +30,27 @@ modules:
     run-tests: true
     config-opts:
       - -Dprofile=development
+    post-install:
+      - |
+        set -e
+        BUILDDIR="${FLATPAK_BUILDER_BUILDDIR:-/run/build/ntfyr/_flatpak_build}"
+        for lang in de es fr ru; do
+          src=""
+          for candidate in \
+            "$BUILDDIR/po/$lang/LC_MESSAGES/ntfyr.mo" \
+            "/app/share/locale/$lang/LC_MESSAGES/ntfyr.mo" \
+            "/app/share/runtime/locale/$lang/share/$lang/LC_MESSAGES/ntfyr.mo"; do
+            if [ -f "$candidate" ]; then
+              src="$candidate"
+              break
+            fi
+          done
+          if [ -z "$src" ]; then
+            echo "Missing translation catalog for $lang" >&2
+            exit 1
+          fi
+          install -Dm644 "$src" "/app/share/ntfyr/locale/$lang/LC_MESSAGES/ntfyr.mo"
+        done
     sources:
       - type: dir
         path: ../

@@ -2,7 +2,7 @@ use std::cell::OnceCell;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::prelude::*;
+use gettextrs::gettext;
 use gtk::{gio, glib};
 
 mod imp {
@@ -31,6 +31,8 @@ mod imp {
         pub change_password_row: TemplateChild<adw::ActionRow>,
         #[template_child]
         pub datetime_format_combo: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub interface_language_combo: TemplateChild<adw::ComboRow>,
         pub notifier: OnceCell<NtfyHandle>,
     }
 
@@ -46,6 +48,7 @@ mod imp {
                 show_default_server_switch: Default::default(),
                 change_password_row: Default::default(),
                 datetime_format_combo: Default::default(),
+                interface_language_combo: Default::default(),
                 notifier: Default::default(),
             }
         }
@@ -89,6 +92,63 @@ impl NtfyrPreferences {
             .unwrap();
 
         let settings = gio::Settings::new(crate::config::APP_ID);
+
+        let labels = crate::i18n::language_labels();
+        let label_refs: Vec<&str> = labels.iter().map(String::as_str).collect();
+        let language_model = gtk::StringList::new(&label_refs);
+        obj.imp()
+            .interface_language_combo
+            .set_model(Some(&language_model));
+        obj.imp()
+            .interface_language_combo
+            .set_selected(crate::i18n::selected_language_index(&settings));
+        let settings_lang = settings.clone();
+        obj.imp()
+            .interface_language_combo
+            .connect_selected_notify(move |combo| {
+                let idx = combo.selected() as usize;
+                let Some(code) = crate::i18n::LANGUAGE_CODES.get(idx) else {
+                    return;
+                };
+                if settings_lang.string("interface-language").as_str() == *code {
+                    return;
+                }
+
+                // Resolve strings while the previous locale is still active.
+                let heading = gettext("Restart required?");
+                let body = gettext(
+                    "The interface language was changed. Restart the application now to update all text.",
+                );
+                let not_now_label = gettext("Not now");
+                let restart_label = gettext("Restart now");
+                let new_code = code.to_string();
+
+                let dialog = adw::AlertDialog::builder()
+                    .heading(heading)
+                    .body(body)
+                    .default_response("restart")
+                    .close_response("later")
+                    .build();
+                dialog.add_response("later", &not_now_label);
+                dialog.add_response("restart", &restart_label);
+                dialog.set_response_appearance("restart", adw::ResponseAppearance::Suggested);
+
+                let parent = combo.root().and_then(|w| {
+                    w.ancestor(gtk::Window::static_type())
+                        .and_then(|w| w.downcast::<gtk::Window>().ok())
+                });
+
+                let settings_apply = settings_lang.clone();
+                glib::spawn_future_local(async move {
+                    let response = dialog.choose_future(parent.as_ref()).await;
+                    let _ = settings_apply.set_string("interface-language", &new_code);
+                    crate::i18n::apply_language_code(&new_code);
+                    if response == "restart" {
+                        crate::i18n::restart_application();
+                    }
+                });
+            });
+
         settings
             .bind("run-on-startup", &*obj.imp().startup_switch, "active")
             .build();
@@ -178,22 +238,20 @@ impl NtfyrPreferences {
                       }
                       
                       if has_topics {
-                           let dialog = adw::MessageDialog::builder()
-                               .heading("Disable Default Server?")
-                               .body("You have active topics on ntfy.sh. Disabling the default server will unsubscribe and remove these topics. This action cannot be undone.")
-                               .modal(true)
+                           let dialog = adw::AlertDialog::builder()
+                               .heading(gettext("Disable Default Server?"))
+                               .body(gettext(
+                                   "You have active topics on ntfy.sh. Disabling the default server will unsubscribe and remove these topics. This action cannot be undone.",
+                               ))
+                               .default_response("cancel")
+                               .close_response("cancel")
                                .build();
-                           
-                           dialog.add_response("cancel", "Cancel");
-                           dialog.add_response("disable", "Disable & Purge");
+
+                           dialog.add_response("cancel", &gettext("Cancel"));
+                           dialog.add_response("disable", &gettext("Disable & Purge"));
                            dialog.set_response_appearance("disable", adw::ResponseAppearance::Destructive);
-                           
-                           if let Some(root) = obj.root().and_downcast::<gtk::Window>() {
-                               dialog.set_transient_for(Some(&root));
-                           }
-                           dialog.present();
-                           
-                           let response = dialog.choose_future().await;
+
+                           let response = dialog.choose_future(Some(&obj)).await;
                            if response == "disable" {
                                 if let Some(app) = gio::Application::default() {
                                      app.activate_action("app.purge-default-server", None);
@@ -259,17 +317,16 @@ impl NtfyrPreferences {
              glib::MainContext::default().spawn_local(async move {
                  let has_pass = crate::secrets::has_password().await.unwrap_or(false);
                  
-                 let dialog = adw::MessageDialog::builder()
-                     .heading(if has_pass { "Change Password" } else { "Set App Lock Password" })
-                     .body(if has_pass { "Enter your current password and a new password." } else { "Enter a new password to secure the application." })
-                     .modal(true)
-                     .build();
-                 
-                 if let Some(window) = &parent_window {
-                     dialog.set_transient_for(Some(window));
-                 }
-                 
-                 dialog.add_response("cancel", "Cancel");
+                 let heading = if has_pass {
+                     gettext("Change Password")
+                 } else {
+                     gettext("Set App Lock Password")
+                 };
+                 let body = if has_pass {
+                     gettext("Enter your current password and a new password.")
+                 } else {
+                     gettext("Enter a new password to secure the application.")
+                 };
                  // Note: "Save" is now a custom button to prevent auto-closing
                  
                  let content_box = gtk::Box::builder()
@@ -282,7 +339,7 @@ impl NtfyrPreferences {
                  
                  let current_entry = if has_pass {
                      let e = adw::PasswordEntryRow::builder()
-                         .title("Current Password")
+                         .title(gettext("Current Password"))
                          .activates_default(true)
                          .build();
                      list.add(&e);
@@ -292,13 +349,13 @@ impl NtfyrPreferences {
                  };
  
                  let new_entry = adw::PasswordEntryRow::builder()
-                     .title("New Password")
+                     .title(gettext("New Password"))
                      .activates_default(true)
                      .build();
                  list.add(&new_entry);
  
                  let confirm_entry = adw::PasswordEntryRow::builder()
-                     .title("Confirm Password")
+                     .title(gettext("Confirm Password"))
                      .activates_default(true)
                      .build();
                  list.add(&confirm_entry);
@@ -312,7 +369,7 @@ impl NtfyrPreferences {
                  content_box.append(&error_label);
 
                  let save_button = gtk::Button::builder()
-                     .label("Save")
+                     .label(gettext("Save"))
                      .css_classes(["suggested-action", "pill"])
                      .margin_top(12)
                      .margin_bottom(12)
@@ -320,9 +377,15 @@ impl NtfyrPreferences {
                      .width_request(120)
                      .build();
                  content_box.append(&save_button);
- 
-                 dialog.set_extra_child(Some(&content_box));
-                 
+
+                 let dialog = adw::AlertDialog::builder()
+                     .heading(heading)
+                     .body(body)
+                     .extra_child(&content_box)
+                     .close_response("cancel")
+                     .build();
+                 dialog.add_response("cancel", &gettext("Cancel"));
+
                  let d = dialog.clone();
                  // Clone widgets for the closure
                  let current_entry_c = current_entry.clone();
@@ -351,7 +414,7 @@ impl NtfyrPreferences {
 
                          // Validate confirmation
                          if new_pass != confirm_pass {
-                             error_label.set_text("Passwords do not match");
+                             error_label.set_text(&gettext("Passwords do not match"));
                              error_label.set_visible(true);
                              new_entry.add_css_class("error");
                              confirm_entry.add_css_class("error");
@@ -359,7 +422,7 @@ impl NtfyrPreferences {
                          }
 
                          if new_pass.is_empty() {
-                             error_label.set_text("Empty password not allowed");
+                             error_label.set_text(&gettext("Empty password not allowed"));
                              error_label.set_visible(true);
                              new_entry.add_css_class("error");
                              return;
@@ -370,7 +433,7 @@ impl NtfyrPreferences {
                              let stored = crate::secrets::get_password().await.unwrap_or(None);
                              if let Some(stored_pass) = stored {
                                  if curr_pass != stored_pass {
-                                     error_label.set_text("Current password incorrect");
+                                     error_label.set_text(&gettext("Current password incorrect"));
                                      error_label.set_visible(true);
                                      curr.add_css_class("error");
                                      curr.grab_focus();
@@ -382,7 +445,9 @@ impl NtfyrPreferences {
                          // Valid
                          if let Err(e) = crate::secrets::store_password(&new_pass).await {
                              tracing::error!("Failed to store password: {}", e);
-                             error_label.set_text(&format!("Error: {}", e));
+                             error_label.set_text(
+                                 &gettext("Error: {}").replacen("{}", &e.to_string(), 1),
+                             );
                              error_label.set_visible(true);
                          } else {
                              tracing::info!("Password set successfully");
@@ -400,8 +465,8 @@ impl NtfyrPreferences {
                  new_entry.connect_apply(move |_| { b.activate(); });
                  let b = save_button.clone();
                  confirm_entry.connect_apply(move |_| { b.activate(); });
-                 
-                 dialog.present();
+
+                 let _ = dialog.choose_future(parent_window.as_ref()).await;
              });
         });
 

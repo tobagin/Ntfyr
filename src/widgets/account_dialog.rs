@@ -1,5 +1,6 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gettextrs::gettext;
 use glib::subclass::Signal;
 use gtk::{gio, glib};
 use once_cell::sync::Lazy;
@@ -79,8 +80,8 @@ impl NtfyrAccountDialog {
         // But for now, we assume dialog is opened for a specific server context.
         
         imp.username_entry.set_text(&account.username);
-        imp.save_btn.set_label("Save");
-        self.set_title("Edit Account");
+        imp.save_btn.set_label(&gettext("Save"));
+        self.set_title(&gettext("Edit Account"));
     }
 
     pub fn account_data(&self) -> (String, String, String) {

@@ -3,6 +3,7 @@ use std::cell::OnceCell;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gettextrs::gettext;
 
 use gtk::{gio, glib};
 use ntfy_daemon::models;
@@ -621,7 +622,7 @@ impl NtfyrWindow {
         
         // 1. Unified Inbox - ActionRow directly in ListBox (ActionRow IS a ListBoxRow)
         let inbox = adw::ActionRow::builder()
-            .subtitle("Unified Inbox")
+            .subtitle(&gettext("Unified Inbox"))
             .icon_name("mail-read-symbolic")
             .activatable(true)
             .build();
@@ -698,7 +699,7 @@ impl NtfyrWindow {
         // MenuButton { icon-name: view-more-symbolic, tooltip: Server Actions, flat }
         let menu_btn = gtk::MenuButton::builder()
             .icon_name("view-more-symbolic")
-            .tooltip_text("Server Actions")
+            .tooltip_text(&gettext("Server Actions"))
             .valign(gtk::Align::Center)
             .build();
         menu_btn.add_css_class("flat");
@@ -734,7 +735,7 @@ impl NtfyrWindow {
         };
 
         // Add Topic Item
-        let add_topic_btn = create_menu_row("Add Topic", "list-add-symbolic");
+        let add_topic_btn = create_menu_row(&gettext("Add Topic"), "list-add-symbolic");
         let server_clone = server.to_string();
         let popover_clone = popover.clone();
         add_topic_btn.connect_clicked(move |btn| {
@@ -746,7 +747,7 @@ impl NtfyrWindow {
         menu_box.append(&add_topic_btn);
 
         // Add Account Item
-        let add_account_btn = create_menu_row("Add Account", "contact-new-symbolic");
+        let add_account_btn = create_menu_row(&gettext("Add Account"), "contact-new-symbolic");
         let server_clone = server.to_string();
         let popover_clone = popover.clone();
             add_account_btn.connect_clicked(move |btn| {
@@ -759,7 +760,7 @@ impl NtfyrWindow {
 
         // Remove Server Item (only custom)
         if server != "https://ntfy.sh" {
-            let remove_btn = create_menu_row("Remove Server", "user-trash-symbolic");
+            let remove_btn = create_menu_row(&gettext("Remove Server"), "user-trash-symbolic");
             remove_btn.add_css_class("destructive-action");
 
             let server_clone = server.to_string();
@@ -772,7 +773,7 @@ impl NtfyrWindow {
             });
             menu_box.append(&remove_btn);
         } else {
-             let hide_btn = create_menu_row("Hide Server", "view-hidden-symbolic");
+             let hide_btn = create_menu_row(&gettext("Hide Server"), "view-hidden-symbolic");
              hide_btn.add_css_class("destructive-action"); // Optional: style it destructively or normally
  
              let popover_clone = popover.clone();
@@ -797,92 +798,13 @@ impl NtfyrWindow {
     fn build_placeholder_action_row(&self) -> adw::ActionRow {
         // Adw.ActionRow { subtitle, icon-name, selectable: false }
         let action_row = adw::ActionRow::builder()
-            .subtitle("no topics added")
+            .subtitle(&gettext("no topics added"))
             .icon_name("mail-mark-important-symbolic")
             .selectable(false)
             .build();
         unsafe { action_row.set_data("placeholder", true); }
         action_row
     }
-
-    fn build_empty_server_row(&self, server: &str) -> gtk::ListBoxRow {
-        let icon_name = if server == "https://ntfy.sh" {
-            "io.github.tobagin.Ntfyr-ntfy-symbolic"
-        } else {
-            "network-server-symbolic"
-        };
-        
-        let action_row = adw::ActionRow::builder()
-            .title(server)
-            .subtitle("No topics added, add your first topic")
-            .icon_name(icon_name)
-            .activatable(false)
-            .build();
-        
-        // Create linked button group
-        let button_box = gtk::Box::builder()
-            .orientation(gtk::Orientation::Horizontal)
-            .spacing(0)
-            .valign(gtk::Align::Center)
-            .build();
-        button_box.add_css_class("linked");
-        
-        // Add Topic button
-        let add_topic_btn = gtk::Button::builder()
-            .icon_name("list-add-symbolic")
-            .tooltip_text("Add Topic")
-            .build();
-        
-        let server_clone = server.to_string();
-        add_topic_btn.connect_clicked(move |btn| {
-            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
-                window.show_add_topic_for_server(&server_clone);
-            }
-        });
-        button_box.append(&add_topic_btn);
-        
-        // Add Account button
-        let add_account_btn = gtk::Button::builder()
-            .icon_name("contact-new-symbolic")
-            .tooltip_text("Add Account")
-            .build();
-        
-        let server_clone = server.to_string();
-        add_account_btn.connect_clicked(move |btn| {
-            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
-                window.on_add_account_clicked(&server_clone);
-            }
-        });
-        button_box.append(&add_account_btn);
-        
-        // Remove Server button (only for custom servers, not ntfy.sh)
-        if server != "https://ntfy.sh" {
-            let remove_server_btn = gtk::Button::builder()
-                .icon_name("user-trash-symbolic")
-                .tooltip_text("Remove Server")
-                .build();
-            remove_server_btn.add_css_class("destructive-action");
-            
-            let server_clone = server.to_string();
-            remove_server_btn.connect_clicked(move |btn| {
-                if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
-                    window.on_remove_server_clicked(&server_clone);
-                }
-            });
-            button_box.append(&remove_server_btn);
-        }
-        
-        action_row.add_suffix(&button_box);
-        
-        let row = gtk::ListBoxRow::builder()
-            .activatable(false)
-            .selectable(false)
-            .build();
-        row.set_child(Some(&action_row));
-        unsafe { row.set_data("empty-server", true); }
-        row
-    }
-
 
     fn attach_sort_trigger(&self, sub: &Subscription) {
         let imp = self.imp();
@@ -1128,10 +1050,10 @@ impl NtfyrWindow {
                  servers.push(url);
                  let _ = settings.set_strv("custom-servers", servers.iter().map(|s| s.as_str()).collect::<Vec<&str>>().as_slice());
                  
-                 let toast = adw::Toast::new("Server added successfully");
+                 let toast = adw::Toast::new(&gettext("Server added successfully"));
                  this.imp().toast_overlay.add_toast(toast);
              } else if servers.contains(&url) {
-                  let toast = adw::Toast::new("Server already exists");
+                  let toast = adw::Toast::new(&gettext("Server already exists"));
                   this.imp().toast_overlay.add_toast(toast);
              }
              
@@ -1140,44 +1062,20 @@ impl NtfyrWindow {
         });
     }
 
-    async fn validate_ntfy_server(&self, url: &str) -> anyhow::Result<bool> {
-        // Basic URL validation
-        if !url.starts_with("http://") && !url.starts_with("https://") {
-            return Ok(false);
-        }
-        
-        // Try to make a simple request to check if server is reachable
-        let health_url = format!("{}/v1/health", url.trim_end_matches('/'));
-        let url_clone = url.to_string();
-        
-        let result = tokio::task::spawn_blocking(move || {
-            let agent = ureq::Agent::new_with_config(Default::default());
-            
-            // Try health endpoint first (most ntfy servers have this)
-            if let Ok(_) = agent.get(&health_url).call() {
-                return true;
-            }
-            
-            // Fallback: try root endpoint - if it responds at all, consider it valid
-            if let Ok(_) = agent.get(&url_clone).call() {
-                return true;
-            }
-            
-            false
-        }).await?;
-        
-        Ok(result)
-    }
-
     pub fn on_remove_server_clicked(&self, server: &str) {
         let server = server.to_string();
         let this = self.clone();
         let dialog = adw::AlertDialog::builder()
-            .heading("Remove Server?")
-            .body(format!("Are you sure you want to remove {}?\n\nAll subscriptions for this server will also be removed.", server))
+            .heading(gettext("Remove Server?"))
+            .body(
+                gettext(
+                    "Are you sure you want to remove {}?\n\nAll subscriptions for this server will also be removed.",
+                )
+                .replacen("{}", &server, 1),
+            )
             .build();
-        dialog.add_response("cancel", "Cancel");
-        dialog.add_response("remove", "Remove");
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("remove", &gettext("Remove"));
         dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1201,7 +1099,9 @@ impl NtfyrWindow {
         let _ = settings.set_boolean("show-default-server", false);
         
         // Also show a toast so user knows how to bring it back
-        let toast = adw::Toast::new("Default server hidden. You can restore it in Preferences.");
+        let toast = adw::Toast::new(&gettext(
+            "Default server hidden. You can restore it in Preferences.",
+        ));
         self.imp().toast_overlay.add_toast(toast);
     }
 
@@ -1239,7 +1139,7 @@ impl NtfyrWindow {
                 this.error_boundary().spawn(async move {
                     let n = this.notifier();
                     n.add_account(&server, &username, &password).await?;
-                    let toast = adw::Toast::new("Account added successfully");
+                    let toast = adw::Toast::new(&gettext("Account added successfully"));
                     this.imp().toast_overlay.add_toast(toast);
                     Ok(())
                 });
@@ -1348,14 +1248,16 @@ impl NtfyrWindow {
                     imp.main_stack.set_visible_child(&*imp.navigation_split_view);
                     
                     if entry_text.is_empty() { 
-                         let toast = adw::Toast::new("Warning: No password set for App Lock.");
+                         let toast = adw::Toast::new(&gettext(
+                             "Warning: No password set for App Lock.",
+                         ));
                          this.imp().toast_overlay.add_toast(toast);
                     }
                 });
             } else {
                 warn!("Authentication failed");
                 glib::MainContext::default().spawn_local(async move {
-                     let toast = adw::Toast::new("Incorrect password");
+                     let toast = adw::Toast::new(&gettext("Incorrect password"));
                      this.imp().toast_overlay.add_toast(toast);
                      this.imp().lock_view.show_error();
                 });

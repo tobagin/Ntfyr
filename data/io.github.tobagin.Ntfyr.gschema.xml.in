@@ -53,5 +53,10 @@
       <default>false</default>
       <summary>Enable auto-lock timeout</summary>
     </key>
+    <key name="interface-language" type="s">
+      <default>'system'</default>
+      <summary>User interface language</summary>
+      <description>Language code for the UI, or "system" to follow the OS locale.</description>
+    </key>
   </schema>
 </schemalist>

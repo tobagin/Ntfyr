@@ -10,8 +10,9 @@ use ntfy_daemon::models;
 use ntfy_daemon::NtfyHandle;
 use tracing::{debug, error, info, warn};
 
-use crate::config::{APP_ID, PKGDATADIR, PROFILE, VERSION};
-use crate::widgets::*;
+use gettextrs::gettext;
+
+use crate::config::{APP_ID, PKGDATADIR, PROFILE, RELEASE_VERSION, VERSION};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use crate::tray;
 
@@ -337,16 +338,33 @@ impl NtfyrApplication {
     fn show_about_dialog(&self) {
         let dialog = adw::AboutDialog::from_appdata(
             "/io/github/tobagin/Ntfyr/io.github.tobagin.Ntfyr.metainfo.xml",
-            Some(crate::config::VERSION),
+            Some(RELEASE_VERSION),
+        );
+        dialog.set_version(VERSION);
+        
+        dialog.add_link(&gettext("Support Questions"), "https://github.com/tobagin/Ntfyr/discussions");
+
+        // "Name https://…" makes the name a clickable link in the Credits page.
+        dialog.set_developers(&[
+            "Tobagin https://github.com/tobagin",
+            "Ranfdev https://github.com/ranfdev",
+            "DataArchitectPro https://github.com/DataArchitectPro",
+        ]);
+        dialog.set_designers(&[
+            "Tobagin https://github.com/tobagin",
+            "Ranfdev https://github.com/ranfdev",
+        ]);
+        dialog.add_credit_section(
+            Some(&gettext("Acknowledgements")),
+            &[
+                "GTK4 https://gtk.org",
+                "Libadwaita https://gitlab.gnome.org/GNOME/libadwaita",
+                "ntfy https://github.com/binwiederhier/ntfy",
+                "gettext-rs https://github.com/gettext-rs/gettext-rs",
+            ],
         );
         
-        dialog.add_link("Support Questions", "https://github.com/tobagin/Ntfyr/discussions");
-        
-        dialog.add_credit_section(Some("Developers"), &["Tobagin", "Ranfdev"]);
-        dialog.add_credit_section(Some("Designers"), &["Tobagin", "Ranfdev"]);
-        dialog.add_credit_section(Some("Acknowledgements"), &["GTK4", "Libadwaita", "ntfy-rs", "gettext-rs"]);
-        
-        dialog.set_copyright("© 2019-2026 The Ntfyr Team");
+        dialog.set_copyright(&gettext("© 2019-2026 The Ntfyr Team"));
         dialog.set_license_type(gtk::License::Gpl30);
 
         if let Some(w) = self.imp().window.borrow().upgrade() {

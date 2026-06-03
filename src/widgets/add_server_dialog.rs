@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gettextrs::gettext;
 use glib::subclass::Signal;
 use gtk::gio;
 use gtk::glib;
@@ -59,7 +60,7 @@ impl AddServerDialog {
     fn build_ui(&self) {
         let imp = self.imp();
         let obj = self.clone();
-        obj.set_title("Add Server");
+        obj.set_title(&gettext("Add Server"));
 
         relm4_macros::view! {
             toolbar_view = adw::ToolbarView {
@@ -74,7 +75,7 @@ impl AddServerDialog {
                     set_margin_bottom: 12,
                     append = &gtk::Label {
                         add_css_class: "dim-label",
-                        set_label: "Enter the URL of your self-hosted ntfy server.",
+                        set_label: &gettext("Enter the URL of your self-hosted ntfy server."),
                         set_wrap: true,
                         set_xalign: 0.0,
                         set_halign: gtk::Align::Center,
@@ -82,13 +83,13 @@ impl AddServerDialog {
                     append = &gtk::ListBox {
                         add_css_class: "boxed-list",
                         append: server_entry = &adw::EntryRow {
-                            set_title: "Server URL",
+                            set_title: &gettext("Server URL"),
                             set_activates_default: true,
                             set_input_purpose: gtk::InputPurpose::Url,
                         },
                     },
                     append: add_btn = &gtk::Button {
-                        set_label: "Add Server",
+                        set_label: &gettext("Add Server"),
                         add_css_class: "suggested-action",
                         add_css_class: "pill",
                         set_halign: gtk::Align::Center,
