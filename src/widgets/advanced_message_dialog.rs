@@ -2,6 +2,7 @@ use std::cell::OnceCell;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gettextrs::gettext;
 use gsv::prelude::*;
 use gtk::{gio, glib};
 
@@ -45,7 +46,7 @@ impl AdvancedMessageDialog {
         this
     }
     fn build_ui(&self, topic: String, message: String) {
-        self.set_title("Advanced Message");
+        self.set_title(&gettext("Advanced Message"));
         self.set_content_height(480);
         self.set_content_width(480);
         let this = self.clone();
@@ -65,7 +66,7 @@ impl AdvancedMessageDialog {
                             set_spacing: 8,
                             set_orientation: gtk::Orientation::Vertical,
                             append = &gtk::Label {
-                                set_label: "Here you can manually build the JSON message you want to POST to this topic",
+                                set_label: &gettext("Here you can manually build the JSON message you want to POST to this topic"),
                                 set_natural_wrap_mode: gtk::NaturalWrapMode::None,
                                 set_xalign: 0.0,
                                 set_halign: gtk::Align::Start,
@@ -74,7 +75,7 @@ impl AdvancedMessageDialog {
                             },
                             append = &gtk::Label {
                                 add_css_class: "heading",
-                                set_label: "JSON",
+                                set_label: &gettext("JSON"),
                                 set_xalign: 0.0,
                                 set_halign: gtk::Align::Start,
                             },
@@ -94,7 +95,7 @@ impl AdvancedMessageDialog {
                             },
                             append = &gtk::Label {
                                 add_css_class: "heading",
-                                set_label: "Snippets",
+                                set_label: &gettext("Snippets"),
                                 set_xalign: 0.0,
                                 set_halign: gtk::Align::Start,
                             },
@@ -104,7 +105,7 @@ impl AdvancedMessageDialog {
                                 append = &gtk::Button {
                                     add_css_class: "pill",
                                     add_css_class: "small",
-                                    set_label: "Title",
+                                    set_label: &gettext("Title"),
                                     connect_clicked[text_view] => move |_| {
                                         text_view.buffer().insert_at_cursor(r#""title": "Title of your message""#)
                                     }
@@ -112,7 +113,7 @@ impl AdvancedMessageDialog {
                                 append = &gtk::Button {
                                     add_css_class: "pill",
                                     add_css_class: "small",
-                                    set_label: "Tags",
+                                    set_label: &gettext("Tags"),
                                     connect_clicked[text_view] => move |_| {
                                         text_view.buffer().insert_at_cursor(r#""tags": ["warning","cd"]"#)
                                     }
@@ -120,7 +121,7 @@ impl AdvancedMessageDialog {
                                 append = &gtk::Button {
                                     add_css_class: "pill",
                                     add_css_class: "small",
-                                    set_label: "Priority",
+                                    set_label: &gettext("Priority"),
                                     connect_clicked[text_view] => move |_| {
                                         text_view.buffer().insert_at_cursor(r#""priority": 5"#)
                                     }
@@ -128,7 +129,7 @@ impl AdvancedMessageDialog {
                                 append = &gtk::Button {
                                     add_css_class: "pill",
                                     add_css_class: "small",
-                                    set_label: "View Action",
+                                    set_label: &gettext("View Action"),
                                     connect_clicked[text_view] => move |_| {
                                         text_view.buffer().insert_at_cursor(r#""actions": [
     {
@@ -142,7 +143,7 @@ impl AdvancedMessageDialog {
                                 append = &gtk::Button {
                                     add_css_class: "pill",
                                     add_css_class: "small",
-                                    set_label: "HTTP Action",
+                                    set_label: &gettext("HTTP Action"),
                                     connect_clicked[text_view] => move |_| {
                                         text_view.buffer().insert_at_cursor(r#""actions": [
     {
@@ -158,7 +159,7 @@ impl AdvancedMessageDialog {
                                 append = &gtk::Button {
                                     add_css_class: "pill",
                                     add_css_class: "small",
-                                    set_label: "Markdown",
+                                    set_label: &gettext("Markdown"),
                                     connect_clicked[text_view] => move |_| {
                                         text_view.buffer().insert_at_cursor(r#""markdown": true"#)
                                     }
@@ -177,15 +178,15 @@ impl AdvancedMessageDialog {
                                 },
                             },
                             append: encrypt_switch = &adw::SwitchRow {
-                                set_title: "Encrypt Message",
-                                set_subtitle: "Encrypts the message body using the topic key",
+                                set_title: &gettext("Encrypt Message"),
+                                set_subtitle: &gettext("Encrypts the message body using the topic key"),
                             },
                             append = &gtk::Button {
                                 set_margin_top: 8,
                                 set_margin_bottom: 8,
                                 add_css_class: "suggested-action",
                                 add_css_class: "pill",
-                                set_label: "Send",
+                                set_label: &gettext("Send"),
                                 connect_clicked[this, toast_overlay, text_view, encrypt_switch] => move |_| {
                                     let thisc = this.clone();
                                     let text_viewc = text_view.clone();

@@ -3,6 +3,7 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 
+use gettextrs::gettext;
 use gtk::{gdk, gio, glib};
 use crate::config::APP_ID;
 use gdk_pixbuf;
@@ -99,17 +100,15 @@ impl MessageRow {
         self.attach(&time, 0, row, 1, 1);
 
         if let Some(p) = msg.priority {
-            let text = format!(
-                "Priority: {}",
-                match p {
-                    5 => "Max",
-                    4 => "High",
-                    3 => "Medium",
-                    2 => "Low",
-                    1 => "Min",
-                    _ => "Invalid",
-                }
-            );
+            let level = match p {
+                5 => gettext("Max"),
+                4 => gettext("High"),
+                3 => gettext("Medium"),
+                2 => gettext("Low"),
+                1 => gettext("Min"),
+                _ => gettext("Invalid"),
+            };
+            let text = gettext("Priority: {}").replacen("{}", &level, 1);
             let priority = gtk::Label::builder().label(&text).xalign(0.0).build();
             priority.add_css_class("caption");
             priority.add_css_class("chip");
@@ -178,7 +177,7 @@ impl MessageRow {
             row += 1;
         }
         if msg.tags.len() > 0 {
-            let mut tags_text = String::from("tags: ");
+            let mut tags_text = gettext("tags: ");
             tags_text.push_str(&msg.tags.join(", "));
             let tags = gtk::Label::builder()
                 .label(&tags_text)
@@ -233,7 +232,9 @@ impl MessageRow {
         match &action {
             models::Action::View { label, url, .. } => {
                 btn.set_label(&label);
-                btn.set_tooltip_text(Some(&format!("Go to {url}")));
+                btn.set_tooltip_text(Some(
+                    &gettext("Go to {}").replacen("{}", url, 1),
+                ));
                 btn.set_action_name(Some("app.message-action"));
                 btn.set_action_target_value(Some(&serde_json::to_string(&action).unwrap().into()));
             }
@@ -241,14 +242,20 @@ impl MessageRow {
                 label, method, url, ..
             } => {
                 btn.set_label(&label);
-                btn.set_tooltip_text(Some(&format!("Send HTTP {method} to {url}")));
+                btn.set_tooltip_text(Some(
+                    &gettext("Send HTTP {} to {}")
+                        .replacen("{}", method, 1)
+                        .replacen("{}", url, 1),
+                ));
                 btn.set_action_name(Some("app.message-action"));
                 btn.set_action_target_value(Some(&serde_json::to_string(&action).unwrap().into()));
             }
             models::Action::Broadcast { label, .. } => {
                 btn.set_label(&label);
                 btn.set_sensitive(false);
-                btn.set_tooltip_text(Some("Broadcast action only available on Android"));
+                btn.set_tooltip_text(Some(&gettext(
+                    "Broadcast action only available on Android",
+                )));
             }
         }
         btn

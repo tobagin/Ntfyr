@@ -2,7 +2,7 @@ using Gtk 4.0;
 using Adw 1;
 
 template $SubscriptionInfoDialog: Adw.Dialog {
-  title: "Subscription Info";
+  title: _("Subscription Info");
 
   Adw.ToolbarView {
     [top]
@@ -10,25 +10,23 @@ template $SubscriptionInfoDialog: Adw.Dialog {
 
     Adw.PreferencesPage {
       Adw.PreferencesGroup {
-        title: "General";
+        title: _("General");
 
         Adw.EntryRow display_name_entry {
-          title: "Display Name";
+          title: _("Display Name");
         }
 
-        Adw.ActionRow {
-          title: "Topic";
+        Adw.ActionRow topic_info_row {
+          title: _("Topic");
           subtitle-selectable: true;
-          subtitle: bind (template.subscription as <$TopicSubscription>).topic as <string>;
 
           styles [
             "property",
           ]
         }
 
-        Adw.ActionRow {
-          title: "Server";
-          subtitle: bind (template.subscription as <$TopicSubscription>).server as <string>;
+        Adw.ActionRow server_info_row {
+          title: _("Server");
           subtitle-selectable: true;
 
           styles [
@@ -37,32 +35,32 @@ template $SubscriptionInfoDialog: Adw.Dialog {
         }
 
         Adw.SwitchRow muted_switch_row {
-          title: "Muted";
+          title: _("Muted");
         }
       }
       
       Adw.PreferencesGroup {
-        title: "Encryption";
+        title: _("Encryption");
         
         Adw.PasswordEntryRow encryption_key_entry {
-          title: "Encryption Key (Base64)";
+          title: _("Encryption Key (Base64)");
         }
       }
 
       Adw.PreferencesGroup {
-        title: "Do Not Disturb Schedule";
+        title: _("Do Not Disturb Schedule");
 
         Adw.SwitchRow schedule_enabled_switch {
-          title: "Enable Schedule";
+          title: _("Enable Schedule");
         }
 
         Adw.EntryRow schedule_start_entry {
-          title: "Start Time";
+          title: _("Start Time");
           text: "22:00";
         }
 
         Adw.EntryRow schedule_end_entry {
-          title: "End Time";
+          title: _("End Time");
           text: "07:00";
         }
 
@@ -75,7 +73,7 @@ template $SubscriptionInfoDialog: Adw.Dialog {
             margin-start: 12;
 
             Gtk.Label {
-              label: "Active Days";
+              label: _("Active Days");
               halign: start;
             }
 
@@ -87,31 +85,31 @@ template $SubscriptionInfoDialog: Adw.Dialog {
               margin-end: 12;
 
               Gtk.ToggleButton {
-                label: "M"; // Monday
+                label: _("Mon");
               }
 
               Gtk.ToggleButton {
-                label: "T"; // Tuesday
+                label: _("Tue");
               }
 
               Gtk.ToggleButton {
-                label: "W"; // Wednesday
+                label: _("Wed");
               }
 
               Gtk.ToggleButton {
-                label: "T"; // Thursday
+                label: _("Thu");
               }
 
               Gtk.ToggleButton {
-                label: "F"; // Friday
+                label: _("Fri");
               }
 
               Gtk.ToggleButton {
-                label: "S"; // Saturday
+                label: _("Sat");
               }
 
               Gtk.ToggleButton {
-                label: "S"; // Sunday
+                label: _("Sun");
               }
             }
           }
@@ -119,7 +117,7 @@ template $SubscriptionInfoDialog: Adw.Dialog {
       }
 
       Adw.PreferencesGroup {
-        title: "Smart Filters";
+        title: _("Smart Filters");
 
         header-suffix: Gtk.Button add_rule_btn {
           icon-name: "list-add-symbolic";
@@ -135,13 +133,9 @@ template $SubscriptionInfoDialog: Adw.Dialog {
 
           [placeholder]
           Adw.ActionRow {
-            title: "No rules configured";
+            title: _("No rules configured");
             icon-name: "accessories-text-editor-symbolic";
           }
-
-          styles [
-            "boxed-list",
-          ]
         }
       }
     }

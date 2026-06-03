@@ -6,15 +6,20 @@ template $NtfyrPreferences: Adw.PreferencesDialog {
   height-request: 360;
 
   Adw.PreferencesPage {
-    title: "Preferences";
+    title: _("Preferences");
     icon-name: "emblem-system-symbolic";
 
     Adw.PreferencesGroup {
-      title: "General";
+      title: _("General");
+
+      Adw.ComboRow interface_language_combo {
+        title: _("Language");
+        subtitle: _("Display language for the application");
+      }
 
       Adw.SwitchRow sort_descending_switch {
-        title: "Sort descending";
-        subtitle: "Newest messages at the top";
+        title: _("Sort descending");
+        subtitle: _("Newest messages at the top");
       }
 
       Adw.ComboRow datetime_format_combo {
@@ -32,40 +37,40 @@ template $NtfyrPreferences: Adw.PreferencesDialog {
       }
 
       Adw.SwitchRow show_default_server_switch {
-        title: "Show Default Server";
-        subtitle: "Show ntfy.sh in the server list";
+        title: _("Show Default Server");
+        subtitle: _("Show ntfy.sh in the server list");
       }
     }
 
     Adw.PreferencesGroup {
-      title: "System";
+      title: _("System");
 
       Adw.SwitchRow startup_switch {
-        title: "Run on Startup";
+        title: _("Run on Startup");
       }
 
       Adw.SwitchRow startup_background_switch {
-        title: "Start in Background";
-        subtitle: "Start the application in the tray instead of showing the window";
+        title: _("Start in Background");
+        subtitle: _("Start the application in the tray instead of showing the window");
       }
     }
   }
 
   Adw.PreferencesPage {
-    title: "Privacy & Security";
+    title: _("Privacy & Security");
     icon-name: "channel-secure-symbolic";
 
     Adw.PreferencesGroup {
-      title: "App Lock";
-      description: "Secure the application with system authentication.";
+      title: _("App Lock");
+      description: _("Secure the application with system authentication.");
 
       Adw.SwitchRow app_lock_switch {
-        title: "App Lock";
-        subtitle: "Require password to open the app";
+        title: _("App Lock");
+        subtitle: _("Require password to open the app");
       }
 
       Adw.ActionRow change_password_row {
-        title: "Change Password";
+        title: _("Change Password");
         activatable: true;
         
         [suffix]
@@ -75,13 +80,13 @@ template $NtfyrPreferences: Adw.PreferencesDialog {
       }
       
       Adw.SwitchRow auto_lock_switch {
-        title: "Auto-lock";
-        subtitle: "Automatically lock when inactive";
+        title: _("Auto-lock");
+        subtitle: _("Automatically lock when inactive");
       }
 
       Adw.SpinRow auto_lock_timeout {
-        title: "Lock Timeout";
-        subtitle: "Minutes of inactivity before locking";
+        title: _("Lock Timeout");
+        subtitle: _("Minutes of inactivity before locking");
         adjustment: Gtk.Adjustment {
           lower: 1;
           upper: 60;

@@ -50,7 +50,7 @@ template $NtfyrWindow: Adw.ApplicationWindow {
         vexpand: true;
 
         sidebar: Adw.NavigationPage {
-          title: "Topics";
+          title: _("Topics");
 
           child: Adw.ToolbarView {
             [top]
@@ -88,7 +88,7 @@ template $NtfyrWindow: Adw.ApplicationWindow {
         };
 
         content: Adw.NavigationPage {
-          title: "Notifications";
+          title: _("Notifications");
 
           Gtk.Stack content_stack {
             Adw.ToolbarView welcome_view {
@@ -96,15 +96,15 @@ template $NtfyrWindow: Adw.ApplicationWindow {
               Adw.HeaderBar {}
 
               content: Adw.StatusPage {
-                title: "Ntfyr";
-                description: "Subscribe to one topic and start listening for notifications";
+                title: _("Ntfyr");
+                description: _("Subscribe to one topic and start listening for notifications");
 
                 child: Gtk.Box {
                   orientation: vertical;
                   spacing: 8;
 
                   Gtk.Button {
-                    label: "Subscribe To Topic";
+                    label: _("Subscribe To Topic");
                     clicked => $show_add_topic() swapped;
                     halign: center;
 
@@ -115,7 +115,7 @@ template $NtfyrWindow: Adw.ApplicationWindow {
                   }
 
                   Gtk.Button {
-                    label: "Discover Integrations";
+                    label: _("Discover Integrations");
                     clicked => $discover_integrations() swapped;
                     halign: center;
 
@@ -140,7 +140,7 @@ template $NtfyrWindow: Adw.ApplicationWindow {
 
               [top]
               Adw.Banner banner {
-                title: "Reconnecting...";
+                title: _("Reconnecting...");
               }
 
               content: ScrolledWindow message_scroll {
@@ -183,7 +183,7 @@ template $NtfyrWindow: Adw.ApplicationWindow {
                     }
 
                     Entry entry {
-                      placeholder-text: "Message...";
+                      placeholder-text: _("Message...");
                       hexpand: true;
                     }
 
@@ -205,7 +205,7 @@ template $NtfyrWindow: Adw.ApplicationWindow {
               [top]
               Adw.HeaderBar {
                 title-widget: Adw.WindowTitle {
-                  title: "Unified Inbox";
+                  title: _("Unified Inbox");
                 };
               }
 

@@ -3,25 +3,24 @@ mod application;
 mod config;
 mod async_utils;
 pub mod error;
+mod i18n;
 mod subscription;
 pub mod widgets;
 mod tray;
 pub mod secrets;
 
-use gettextrs::{gettext, LocaleCategory};
+use gettextrs::gettext;
 use gtk::{gio, glib};
 
 use self::application::NtfyrApplication;
-use self::config::{GETTEXT_PACKAGE, LOCALEDIR, RESOURCES_FILE};
+use self::config::RESOURCES_FILE;
 
 fn main() -> glib::ExitCode {
     // Initialize logger
     tracing_subscriber::fmt::init();
 
-    // Prepare i18n
-    gettextrs::setlocale(LocaleCategory::LcAll, "");
-    gettextrs::bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
-    gettextrs::textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
+    // Prepare i18n (locale from GSettings, then gettext catalogs)
+    i18n::init();
 
     glib::set_application_name(&gettext("Ntfyr"));
 

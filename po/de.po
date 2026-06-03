@@ -1,0 +1,780 @@
+# German translations for ntfyr package.
+# Copyright (C) 2026 THE ntfyr'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the ntfyr package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: ntfyr\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-03 14:26+0500\n"
+"PO-Revision-Date: 2026-06-03 12:17+0500\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:6
+msgid "Window width"
+msgstr "Fensterbreite"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:10
+msgid "Window height"
+msgstr "Fensterhöhe"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:14
+msgid "Window maximized state"
+msgstr "Maximiert-Status des Fensters"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:18
+msgid "Run on startup"
+msgstr "Beim Systemstart ausführen"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:22
+msgid "Sort messages by descending date"
+msgstr "Nachrichten absteigend nach Datum sortieren"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:26
+msgid "Date and time format for message timestamps"
+msgstr "Datums- und Zeitformat für Nachrichtenzeitstempel"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:30
+msgid "Start in background"
+msgstr "Im Hintergrund starten"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:34
+msgid "Enable Biometric/App Lock on Startup"
+msgstr "Biometrie/App-Sperre beim Start aktivieren"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:38
+msgid "List of custom servers"
+msgstr "Liste benutzerdefinierter Server"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:42
+msgid "Default server for new subscriptions"
+msgstr "Standardserver für neue Abonnements"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:46
+msgid "Show default server (ntfy.sh) in list"
+msgstr "Standardserver (ntfy.sh) in der Liste anzeigen"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:50
+msgid "App lock timeout in seconds"
+msgstr "App-Sperr-Timeout in Sekunden"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:54
+msgid "Enable auto-lock timeout"
+msgstr "Automatisches Sperren nach Timeout aktivieren"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:58
+msgid "User interface language"
+msgstr "Sprache der Benutzeroberfläche"
+
+#: data/io.github.tobagin.Ntfyr.gschema.xml.in:59
+msgid "Language code for the UI, or \"system\" to follow the OS locale."
+msgstr "Sprachcode für die Benutzeroberfläche oder „system“, um der Systemsprache zu folgen."
+
+#. Add Account Item
+#: data/resources/ui/account_dialog.blp:5
+#: data/resources/ui/account_dialog.blp:48 src/widgets/window.rs:750
+#: src/widgets/window.rs:848
+msgid "Add Account"
+msgstr "Konto hinzufügen"
+
+#: data/resources/ui/account_dialog.blp:25
+msgid "Enter credentials for this server."
+msgstr "Anmeldedaten für diesen Server eingeben."
+
+#: data/resources/ui/account_dialog.blp:37
+msgid "Username"
+msgstr "Benutzername"
+
+#: data/resources/ui/account_dialog.blp:42
+msgid "Password"
+msgstr "Passwort"
+
+#: data/resources/ui/filter_rule_dialog.blp:5
+msgid "Add Filter Rule"
+msgstr "Filterregel hinzufügen"
+
+#: data/resources/ui/filter_rule_dialog.blp:16 src/widgets/preferences.rs:250
+#: src/widgets/preferences.rs:343 src/widgets/window.rs:1185
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: data/resources/ui/filter_rule_dialog.blp:22
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: data/resources/ui/filter_rule_dialog.blp:32
+msgid "Rule Details"
+msgstr "Regeldetails"
+
+#: data/resources/ui/filter_rule_dialog.blp:35
+msgid "Name"
+msgstr "Name"
+
+#: data/resources/ui/filter_rule_dialog.blp:39
+msgid "Regex Pattern"
+msgstr "Regex-Muster"
+
+#: data/resources/ui/filter_rule_dialog.blp:43
+msgid "Action"
+msgstr "Aktion"
+
+#: data/resources/ui/filter_rule_dialog.blp:47
+msgid "Mute"
+msgstr "Stummschalten"
+
+#: data/resources/ui/filter_rule_dialog.blp:48
+msgid "Discard"
+msgstr "Verwerfen"
+
+#: data/resources/ui/filter_rule_dialog.blp:49
+msgid "Mark Read"
+msgstr "Als gelesen markieren"
+
+#: data/resources/ui/lock_view.blp:13 data/resources/ui/window.blp:70
+msgid "Main Menu"
+msgstr "Hauptmenü"
+
+#: data/resources/ui/lock_view.blp:18
+msgid "Ntfyr is Locked"
+msgstr "Ntfyr ist gesperrt"
+
+#: data/resources/ui/lock_view.blp:19
+msgid "Authentication required to access your notifications"
+msgstr "Authentifizierung erforderlich, um auf Ihre Benachrichtigungen zuzugreifen"
+
+#: data/resources/ui/lock_view.blp:28
+msgid "Enter Password"
+msgstr "Passwort eingeben"
+
+#: data/resources/ui/lock_view.blp:35
+msgid "Unlock"
+msgstr "Entsperren"
+
+#: data/resources/ui/lock_view.blp:47 data/resources/ui/window.blp:238
+msgid "_Preferences"
+msgstr "_Einstellungen"
+
+#: data/resources/ui/lock_view.blp:54 data/resources/ui/window.blp:250
+msgid "_About Ntfyr"
+msgstr "_Über Ntfyr"
+
+#: data/resources/ui/lock_view.blp:61 data/resources/ui/window.blp:257
+msgid "_Quit"
+msgstr "_Beenden"
+
+#: data/resources/ui/preferences.blp:9
+msgid "Preferences"
+msgstr "Einstellungen"
+
+#: data/resources/ui/preferences.blp:13
+#: data/resources/ui/subscription_info_dialog.blp:13
+msgid "General"
+msgstr "Allgemein"
+
+#: data/resources/ui/preferences.blp:16
+msgid "Language"
+msgstr "Sprache"
+
+#: data/resources/ui/preferences.blp:17
+msgid "Display language for the application"
+msgstr "Anzeigesprache der Anwendung"
+
+#: data/resources/ui/preferences.blp:21
+msgid "Sort descending"
+msgstr "Absteigend sortieren"
+
+#: data/resources/ui/preferences.blp:22
+msgid "Newest messages at the top"
+msgstr "Neueste Nachrichten oben"
+
+#: data/resources/ui/preferences.blp:26
+msgid "Date/Time Format"
+msgstr "Datums-/Zeitformat"
+
+#: data/resources/ui/preferences.blp:27
+msgid "Format for message timestamps"
+msgstr "Format für Nachrichtenzeitstempel"
+
+#: data/resources/ui/preferences.blp:30
+msgid "ISO (2024-11-15 21:58:33)"
+msgstr "ISO (2024-11-15 21:58:33)"
+
+#: data/resources/ui/preferences.blp:31
+msgid "European (15.11.2024 21:58)"
+msgstr "Europäisch (15.11.2024 21:58)"
+
+#: data/resources/ui/preferences.blp:32
+msgid "US (11/15/2024 21:58)"
+msgstr "USA (11/15/2024 21:58)"
+
+#: data/resources/ui/preferences.blp:33
+msgid "Time only (21:58:33)"
+msgstr "Nur Uhrzeit (21:58:33)"
+
+#: data/resources/ui/preferences.blp:34
+msgid "Short (Nov 15 21:58)"
+msgstr "Kurz (15. Nov 21:58)"
+
+#: data/resources/ui/preferences.blp:40
+msgid "Show Default Server"
+msgstr "Standardserver anzeigen"
+
+#: data/resources/ui/preferences.blp:41
+msgid "Show ntfy.sh in the server list"
+msgstr "ntfy.sh in der Serverliste anzeigen"
+
+#: data/resources/ui/preferences.blp:46
+msgid "System"
+msgstr "System"
+
+#: data/resources/ui/preferences.blp:49
+msgid "Run on Startup"
+msgstr "Beim Start ausführen"
+
+#: data/resources/ui/preferences.blp:53
+msgid "Start in Background"
+msgstr "Im Hintergrund starten"
+
+#: data/resources/ui/preferences.blp:54
+msgid "Start the application in the tray instead of showing the window"
+msgstr "Anwendung im Tray starten, ohne das Fenster anzuzeigen"
+
+#: data/resources/ui/preferences.blp:60
+msgid "Privacy & Security"
+msgstr "Datenschutz & Sicherheit"
+
+#: data/resources/ui/preferences.blp:64 data/resources/ui/preferences.blp:68
+msgid "App Lock"
+msgstr "App-Sperre"
+
+#: data/resources/ui/preferences.blp:65
+msgid "Secure the application with system authentication."
+msgstr "Anwendung mit Systemauthentifizierung schützen."
+
+#: data/resources/ui/preferences.blp:69
+msgid "Require password to open the app"
+msgstr "Passwort zum Öffnen der App erforderlich"
+
+#: data/resources/ui/preferences.blp:73 src/widgets/preferences.rs:327
+msgid "Change Password"
+msgstr "Passwort ändern"
+
+#: data/resources/ui/preferences.blp:83
+msgid "Auto-lock"
+msgstr "Automatische Sperre"
+
+#: data/resources/ui/preferences.blp:84
+msgid "Automatically lock when inactive"
+msgstr "Bei Inaktivität automatisch sperren"
+
+#: data/resources/ui/preferences.blp:88
+msgid "Lock Timeout"
+msgstr "Sperr-Timeout"
+
+#: data/resources/ui/preferences.blp:89
+msgid "Minutes of inactivity before locking"
+msgstr "Minuten Inaktivität vor dem Sperren"
+
+#: data/resources/ui/shortcuts.blp:6
+msgctxt "shortcut window"
+msgid "General"
+msgstr "Allgemein"
+
+#: data/resources/ui/shortcuts.blp:9
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "Tastenkürzel anzeigen"
+
+#: data/resources/ui/shortcuts.blp:14
+msgctxt "shortcut window"
+msgid "Preferences"
+msgstr "Einstellungen"
+
+#: data/resources/ui/shortcuts.blp:19
+msgctxt "shortcut window"
+msgid "About"
+msgstr "Über"
+
+#: data/resources/ui/shortcuts.blp:24
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "Beenden"
+
+#: data/resources/ui/shortcuts.blp:30
+msgctxt "shortcut window"
+msgid "Topics"
+msgstr "Themen"
+
+#: data/resources/ui/shortcuts.blp:33
+msgctxt "shortcut window"
+msgid "New Topic"
+msgstr "Neues Thema"
+
+#: data/resources/ui/shortcuts.blp:39
+msgctxt "shortcut window"
+msgid "Subscription"
+msgstr "Abonnement"
+
+#: data/resources/ui/shortcuts.blp:42
+msgctxt "shortcut window"
+msgid "Focus Message Entry"
+msgstr "Nachrichteneingabe fokussieren"
+
+#: data/resources/ui/shortcuts.blp:47
+msgctxt "shortcut window"
+msgid "Clear Notifications"
+msgstr "Benachrichtigungen löschen"
+
+#: data/resources/ui/subscription_info_dialog.blp:5
+msgid "Subscription Info"
+msgstr "Abonnement-Info"
+
+#: data/resources/ui/subscription_info_dialog.blp:16
+msgid "Display Name"
+msgstr "Anzeigename"
+
+#: data/resources/ui/subscription_info_dialog.blp:20
+#: src/widgets/add_subscription_dialog.rs:93
+msgid "Topic"
+msgstr "Thema"
+
+#: data/resources/ui/subscription_info_dialog.blp:30
+msgid "Server"
+msgstr "Server"
+
+#: data/resources/ui/subscription_info_dialog.blp:40
+msgid "Muted"
+msgstr "Stummgeschaltet"
+
+#: data/resources/ui/subscription_info_dialog.blp:45
+msgid "Encryption"
+msgstr "Verschlüsselung"
+
+#: data/resources/ui/subscription_info_dialog.blp:48
+msgid "Encryption Key (Base64)"
+msgstr "Verschlüsselungsschlüssel (Base64)"
+
+#: data/resources/ui/subscription_info_dialog.blp:53
+msgid "Do Not Disturb Schedule"
+msgstr "Nicht-stören-Zeitplan"
+
+#: data/resources/ui/subscription_info_dialog.blp:56
+msgid "Enable Schedule"
+msgstr "Zeitplan aktivieren"
+
+#: data/resources/ui/subscription_info_dialog.blp:60
+msgid "Start Time"
+msgstr "Startzeit"
+
+#: data/resources/ui/subscription_info_dialog.blp:65
+msgid "End Time"
+msgstr "Endzeit"
+
+#: data/resources/ui/subscription_info_dialog.blp:78
+msgid "Active Days"
+msgstr "Aktive Tage"
+
+#: data/resources/ui/subscription_info_dialog.blp:122
+msgid "Smart Filters"
+msgstr "Intelligente Filter"
+
+#: data/resources/ui/subscription_info_dialog.blp:138
+msgid "No rules configured"
+msgstr "Keine Regeln konfiguriert"
+
+#: data/resources/ui/window.blp:7
+msgid "_Subscription Info"
+msgstr "_Abonnement-Info"
+
+#: data/resources/ui/window.blp:14
+msgid "_Clear all notifications"
+msgstr "_Alle Benachrichtigungen löschen"
+
+#: data/resources/ui/window.blp:19
+msgid "_Unsubscribe"
+msgstr "_Abmelden"
+
+#: data/resources/ui/window.blp:53
+msgid "Topics"
+msgstr "Themen"
+
+#: data/resources/ui/window.blp:61 src/widgets/add_server_dialog.rs:63
+#: src/widgets/add_server_dialog.rs:92
+msgid "Add Server"
+msgstr "Server hinzufügen"
+
+#: data/resources/ui/window.blp:91
+msgid "Notifications"
+msgstr "Benachrichtigungen"
+
+#: data/resources/ui/window.blp:99 src/main.rs:25 src/tray.rs:30 src/tray.rs:51
+msgid "Ntfyr"
+msgstr "Ntfyr"
+
+#: data/resources/ui/window.blp:100
+msgid "Subscribe to one topic and start listening for notifications"
+msgstr "Abonnieren Sie ein Thema und empfangen Sie Benachrichtigungen"
+
+#: data/resources/ui/window.blp:107 src/widgets/add_subscription_dialog.rs:70
+msgid "Subscribe To Topic"
+msgstr "Thema abonnieren"
+
+#: data/resources/ui/window.blp:118
+msgid "Discover Integrations"
+msgstr "Integrationen entdecken"
+
+#: data/resources/ui/window.blp:137
+msgid "Subscription Menu"
+msgstr "Abonnement-Menü"
+
+#: data/resources/ui/window.blp:143
+msgid "Reconnecting..."
+msgstr "Wiederverbinden…"
+
+#: data/resources/ui/window.blp:182
+msgid "Insert Code Snippet"
+msgstr "Code-Snippet einfügen"
+
+#: data/resources/ui/window.blp:186
+msgid "Message..."
+msgstr "Nachricht…"
+
+#: data/resources/ui/window.blp:197
+msgid "Send Message"
+msgstr "Nachricht senden"
+
+#: data/resources/ui/window.blp:208 src/widgets/window.rs:625
+msgid "Unified Inbox"
+msgstr "Einheitlicher Posteingang"
+
+#: data/resources/ui/window.blp:245
+msgid "_Keyboard Shortcuts"
+msgstr "_Tastenkürzel"
+
+#: src/tray.rs:52
+msgid "Notifications in background"
+msgstr "Benachrichtigungen im Hintergrund"
+
+#: src/tray.rs:60
+msgid "Hide Window"
+msgstr "Fenster ausblenden"
+
+#: src/tray.rs:62
+msgid "Show Window"
+msgstr "Fenster anzeigen"
+
+#: src/tray.rs:89
+msgid "Quit"
+msgstr "Beenden"
+
+#: src/widgets/add_server_dialog.rs:78
+msgid "Enter the URL of your self-hosted ntfy server."
+msgstr "Geben Sie die URL Ihres selbst gehosteten ntfy-Servers ein."
+
+#: src/widgets/add_server_dialog.rs:86
+msgid "Server URL"
+msgstr "Server-URL"
+
+#: src/widgets/add_subscription_dialog.rs:68
+msgid "Subscribing to topic on {}"
+msgstr "Abonniere Thema auf {}"
+
+#: src/widgets/add_subscription_dialog.rs:97
+msgid "Generate name"
+msgstr "Name generieren"
+
+#: src/widgets/add_subscription_dialog.rs:109
+msgid "Subscribe"
+msgstr "Abonnieren"
+
+#: src/widgets/advanced_message_dialog.rs:49
+msgid "Advanced Message"
+msgstr "Erweiterte Nachricht"
+
+#: src/widgets/advanced_message_dialog.rs:69
+msgid ""
+"Here you can manually build the JSON message you want to POST to this topic"
+msgstr "Hier können Sie die JSON-Nachricht manuell erstellen, die an dieses Thema gesendet werden soll"
+
+#: src/widgets/advanced_message_dialog.rs:78
+msgid "JSON"
+msgstr "JSON"
+
+#: src/widgets/advanced_message_dialog.rs:98
+msgid "Snippets"
+msgstr "Codefragmente"
+
+#: src/widgets/advanced_message_dialog.rs:108
+msgid "Title"
+msgstr "Titel"
+
+#: src/widgets/advanced_message_dialog.rs:116
+msgid "Tags"
+msgstr "Schlagwörter"
+
+#: src/widgets/advanced_message_dialog.rs:124
+msgid "Priority"
+msgstr "Priorität"
+
+#: src/widgets/advanced_message_dialog.rs:132
+msgid "View Action"
+msgstr "Anzeige-Aktion"
+
+#: src/widgets/advanced_message_dialog.rs:146
+msgid "HTTP Action"
+msgstr "HTTP-Aktion"
+
+#: src/widgets/advanced_message_dialog.rs:162
+msgid "Markdown"
+msgstr "Markdown"
+
+#: src/widgets/advanced_message_dialog.rs:181
+msgid "Encrypt Message"
+msgstr "Nachricht verschlüsseln"
+
+#: src/widgets/advanced_message_dialog.rs:182
+msgid "Encrypts the message body using the topic key"
+msgstr "Verschlüsselt den Nachrichtentext mit dem Themenschlüssel"
+
+#: src/widgets/advanced_message_dialog.rs:189
+msgid "Send"
+msgstr "Senden"
+
+#: src/widgets/preferences.rs:124
+msgid "Restart required?"
+msgstr "Neustart erforderlich?"
+
+#: src/widgets/preferences.rs:126
+msgid ""
+"The interface language was changed. Restart the application now to update "
+"all text."
+msgstr "Die Sprache der Benutzeroberfläche wurde geändert. Starten Sie die Anwendung jetzt neu, um alle Texte zu aktualisieren."
+
+#: src/widgets/preferences.rs:130
+msgid "Not now"
+msgstr "Nicht jetzt"
+
+#: src/widgets/preferences.rs:131
+msgid "Restart now"
+msgstr "Jetzt neu starten"
+
+#: src/widgets/preferences.rs:243
+msgid "Disable Default Server?"
+msgstr "Standardserver deaktivieren?"
+
+#: src/widgets/preferences.rs:245
+msgid ""
+"You have active topics on ntfy.sh. Disabling the default server will "
+"unsubscribe and remove these topics. This action cannot be undone."
+msgstr "Sie haben aktive Themen auf ntfy.sh. Wenn Sie den Standardserver deaktivieren, werden diese Themen abgemeldet und entfernt. Diese Aktion kann nicht rückgängig gemacht werden."
+
+#: src/widgets/preferences.rs:251
+msgid "Disable & Purge"
+msgstr "Deaktivieren & entfernen"
+
+#: src/widgets/preferences.rs:329
+msgid "Set App Lock Password"
+msgstr "App-Sperr-Passwort festlegen"
+
+#: src/widgets/preferences.rs:332
+msgid "Enter your current password and a new password."
+msgstr "Geben Sie Ihr aktuelles und ein neues Passwort ein."
+
+#: src/widgets/preferences.rs:334
+msgid "Enter a new password to secure the application."
+msgstr "Geben Sie ein neues Passwort ein, um die Anwendung zu schützen."
+
+#: src/widgets/preferences.rs:356
+msgid "Current Password"
+msgstr "Aktuelles Passwort"
+
+#: src/widgets/preferences.rs:366
+msgid "New Password"
+msgstr "Neues Passwort"
+
+#: src/widgets/preferences.rs:372
+msgid "Confirm Password"
+msgstr "Passwort bestätigen"
+
+#: src/widgets/preferences.rs:386
+msgid "Save"
+msgstr "Speichern"
+
+#: src/widgets/preferences.rs:425
+msgid "Passwords do not match"
+msgstr "Passwörter stimmen nicht überein"
+
+#: src/widgets/preferences.rs:433
+msgid "Empty password not allowed"
+msgstr "Leeres Passwort nicht erlaubt"
+
+#: src/widgets/preferences.rs:444
+msgid "Current password incorrect"
+msgstr "Aktuelles Passwort falsch"
+
+#: src/widgets/window.rs:702
+msgid "Server Actions"
+msgstr "Server-Aktionen"
+
+#. Add Topic Item
+#: src/widgets/window.rs:738 src/widgets/window.rs:834
+msgid "Add Topic"
+msgstr "Thema hinzufügen"
+
+#: src/widgets/window.rs:763 src/widgets/window.rs:863
+msgid "Remove Server"
+msgstr "Server entfernen"
+
+#: src/widgets/window.rs:776
+msgid "Hide Server"
+msgstr "Server ausblenden"
+
+#: src/widgets/window.rs:801
+msgid "no topics added"
+msgstr "keine Themen hinzugefügt"
+
+#: src/widgets/window.rs:818
+msgid "No topics added, add your first topic"
+msgstr "Keine Themen hinzugefügt, fügen Sie Ihr erstes Thema hinzu"
+
+#: src/widgets/window.rs:1132
+msgid "Server added successfully"
+msgstr "Server erfolgreich hinzugefügt"
+
+#: src/widgets/window.rs:1135
+msgid "Server already exists"
+msgstr "Server existiert bereits"
+
+#: src/widgets/window.rs:1177
+msgid "Remove Server?"
+msgstr "Server entfernen?"
+
+#: src/widgets/window.rs:1180
+msgid ""
+"Are you sure you want to remove {}?\n"
+"\n"
+"All subscriptions for this server will also be removed."
+msgstr "Möchten Sie {} wirklich entfernen?\n\nAlle Abonnements auf diesem Server werden ebenfalls entfernt."
+
+#: src/widgets/window.rs:1186
+msgid "Remove"
+msgstr "Entfernen"
+
+#: src/widgets/window.rs:1211
+msgid "Default server hidden. You can restore it in Preferences."
+msgstr "Standardserver ausgeblendet. Sie können ihn in den Einstellungen wiederherstellen."
+
+#: src/widgets/window.rs:1250
+msgid "Account added successfully"
+msgstr "Konto erfolgreich hinzugefügt"
+
+#: src/widgets/window.rs:1360
+msgid "Warning: No password set for App Lock."
+msgstr "Warnung: Kein Passwort für die App-Sperre festgelegt."
+
+#: src/widgets/window.rs:1368
+msgid "Incorrect password"
+msgstr "Falsches Passwort"
+
+#: src/application.rs:349
+msgid "Acknowledgements"
+msgstr "Danksagungen"
+
+#: src/application.rs:336
+msgid "Support Questions"
+msgstr "Support-Fragen"
+
+#: src/application.rs:358
+msgid "© 2019-2026 The Ntfyr Team"
+msgstr "© 2019–2026 Das Ntfyr-Team"
+
+#: src/i18n.rs
+msgid "System default"
+msgstr "Systemstandard"
+
+#: src/widgets/message_row.rs
+msgid "Go to {}"
+msgstr "Zu {} wechseln"
+
+#: src/widgets/message_row.rs
+msgid "Send HTTP {} to {}"
+msgstr "HTTP {} an {} senden"
+
+#: src/widgets/message_row.rs
+msgid "Broadcast action only available on Android"
+msgstr "Broadcast-Aktion nur auf Android verfügbar"
+
+#: src/widgets/preferences.rs
+msgid "Error: {}"
+msgstr "Fehler: {}"
+
+#: src/widgets/subscription_info_dialog.rs
+msgid "Regex: {} -> {}"
+msgstr "Regulärer Ausdruck: {} -> {}"
+
+#: src/widgets/message_row.rs
+msgid "Priority: {}"
+msgstr "Priorität: {}"
+
+#: src/widgets/message_row.rs
+msgid "Max"
+msgstr "Max."
+
+#: src/widgets/message_row.rs
+msgid "High"
+msgstr "Hoch"
+
+#: src/widgets/message_row.rs
+msgid "Medium"
+msgstr "Mittel"
+
+#: src/widgets/message_row.rs
+msgid "Low"
+msgstr "Niedrig"
+
+#: src/widgets/message_row.rs
+msgid "Min"
+msgstr "Min."
+
+#: src/widgets/message_row.rs
+msgid "Invalid"
+msgstr "Ungültig"
+
+#: src/widgets/message_row.rs
+msgid "tags: "
+msgstr "Tags: "
+
+#: data/resources/ui/subscription_info_dialog.blp
+msgid "Mon"
+msgstr "Mo"
+
+#: data/resources/ui/subscription_info_dialog.blp
+msgid "Tue"
+msgstr "Di"
+
+#: data/resources/ui/subscription_info_dialog.blp
+msgid "Wed"
+msgstr "Mi"
+
+#: data/resources/ui/subscription_info_dialog.blp
+msgid "Thu"
+msgstr "Do"
+
+#: data/resources/ui/subscription_info_dialog.blp
+msgid "Fri"
+msgstr "Fr"
+
+#: data/resources/ui/subscription_info_dialog.blp
+msgid "Sat"
+msgstr "Sa"
+
+#: data/resources/ui/subscription_info_dialog.blp
+msgid "Sun"
+msgstr "So"

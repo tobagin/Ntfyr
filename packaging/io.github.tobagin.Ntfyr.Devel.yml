@@ -30,6 +30,22 @@ modules:
     run-tests: true
     config-opts:
       - -Dprofile=development
+    post-install:
+      - |
+        set -e
+        # Mirror every catalog meson installed (one per LINGUAS entry) into the
+        # app's custom LOCALEDIR, so new languages are picked up automatically.
+        found=0
+        for mo in /app/share/locale/*/LC_MESSAGES/ntfyr.mo; do
+          [ -f "$mo" ] || continue
+          lang=$(basename "$(dirname "$(dirname "$mo")")")
+          install -Dm644 "$mo" "/app/share/ntfyr/locale/$lang/LC_MESSAGES/ntfyr.mo"
+          found=$((found + 1))
+        done
+        if [ "$found" -eq 0 ]; then
+          echo "No translation catalogs found under /app/share/locale" >&2
+          exit 1
+        fi
     sources:
       - type: dir
         path: ../

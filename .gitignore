@@ -7,8 +7,10 @@
 /src/config.rs
 *.ui.in~
 *.ui~
+/po/__pycache__/
 /.flatpak/
 /vendor
 /.vscode
 /subprojects/blueprint-compiler
 .flatpak-builder/
+*.po~
