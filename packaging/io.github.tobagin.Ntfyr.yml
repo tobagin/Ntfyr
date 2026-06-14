@@ -48,7 +48,7 @@ modules:
         fi
     sources:
       - type: git
-        url: https://github.com/tobagin/Notify
-        tag: v0.1.3
-        commit: c149f7e4948cfd094e731055d2d4a504c482a435
+        url: https://github.com/tobagin/Ntfyr
+        tag: v0.6.2
+        commit: 091b7c02094e349e72a8549d5234a310c30040af
       - cargo-sources.json
