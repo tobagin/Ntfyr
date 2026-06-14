@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-06-14
+
+### 🔒 Security
+
+- **Notification rendering**: Escape markdown link URLs before building Pango markup, closing a markup-injection vector from server-controlled link targets.
+- **View actions**: Restrict `view` action URLs to `http`/`https` schemes, preventing server-controlled messages from opening `file:`, `tel:`, and other handler URIs.
+- **HTTP actions**: Validate `http` action targets (http(s) only, blocking loopback/private/link-local hosts to limit SSRF) and require explicit user confirmation showing the real request target before sending.
+- **App lock**: Compare unlock passwords in constant time, and fail closed (deny unlock) when the keyring cannot be read instead of granting access.
+- **Daemon hardening**: Bound SSE per-line buffering to prevent memory exhaustion from a malicious or compromised server, validate the encryption key length before use, and compile filter regexes once per subscription with bounded size limits.
+- **Flatpak**: Drop unused system-bus and PolicyKit permissions from the development manifest.
+
 ## [0.6.1] - 2026-06-03
 
 ### 🔧 Changed

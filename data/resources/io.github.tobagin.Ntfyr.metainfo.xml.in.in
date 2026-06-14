@@ -52,6 +52,17 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.6.2" date="2026-06-14">
+      <description>
+        <p>Security release.</p>
+        <ul>
+          <li>Escape markdown link URLs to prevent markup injection from notification content.</li>
+          <li>Restrict notification action URLs to http(s) and confirm HTTP actions before sending.</li>
+          <li>Constant-time app-lock password checks that fail closed on keyring errors.</li>
+          <li>Harden the daemon against malformed or malicious server data.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.1" date="2026-06-03">
       <description>
         <p>Maintenance release.</p>
