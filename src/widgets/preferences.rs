@@ -432,7 +432,11 @@ impl NtfyrPreferences {
                              let curr_pass = curr.text();
                              let stored = crate::secrets::get_password().await.unwrap_or(None);
                              if let Some(stored_pass) = stored {
-                                 if curr_pass != stored_pass {
+                                 use subtle::ConstantTimeEq;
+                                 let matches = bool::from(
+                                     curr_pass.as_bytes().ct_eq(stored_pass.as_bytes()),
+                                 );
+                                 if !matches {
                                      error_label.set_text(&gettext("Current password incorrect"));
                                      error_label.set_visible(true);
                                      curr.add_css_class("error");

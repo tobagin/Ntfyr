@@ -1900,10 +1900,12 @@ dependencies = [
  "serde",
  "serde_json",
  "sourceview5",
+ "subtle",
  "tokio",
  "tracing",
  "tracing-subscriber",
  "ureq",
+ "url",
  "zbus",
 ]
 

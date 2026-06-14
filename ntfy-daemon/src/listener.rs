@@ -3,13 +3,11 @@ use std::time::Duration;
 
 use futures::{StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncBufReadExt;
 use tokio::task::{spawn_local, LocalSet};
 use tokio::{
     select,
     sync::{mpsc, oneshot},
 };
-use tokio_stream::wrappers::LinesStream;
 use tracing::{debug, error, info, warn, Instrument};
 
 use crate::credentials::Credentials;
@@ -93,9 +91,16 @@ fn topic_request(
 }
 
 async fn response_lines(
-    res: impl tokio::io::AsyncBufRead,
+    res: impl tokio::io::AsyncRead,
 ) -> Result<impl futures::Stream<Item = Result<String, std::io::Error>>, reqwest::Error> {
-    let lines = LinesStream::new(res.lines());
+    use tokio_util::codec::{FramedRead, LinesCodec};
+    // Bound per-line buffering so a malicious or compromised server cannot
+    // stream an arbitrarily long line (no newline) and grow a single buffer
+    // until the daemon runs out of memory. Overflow surfaces as an io error,
+    // which drops to the existing retry/backoff path.
+    const MAX_LINE_BYTES: usize = 1 << 20; // 1 MiB
+    let lines = FramedRead::new(res, LinesCodec::new_with_max_length(MAX_LINE_BYTES))
+        .map(|r| r.map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())));
     Ok(lines)
 }
 

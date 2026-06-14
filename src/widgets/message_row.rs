@@ -43,7 +43,10 @@ fn markdown_to_pango(markdown: &str) -> String {
             Event::Start(Tag::Emphasis) => pango.push_str("<i>"),
             Event::End(TagEnd::Emphasis) => pango.push_str("</i>"),
             Event::Start(Tag::Link { dest_url, .. }) => {
-                pango.push_str(&format!("<a href=\"{}\">", dest_url));
+                pango.push_str(&format!(
+                    "<a href=\"{}\">",
+                    glib::markup_escape_text(&dest_url)
+                ));
             }
             Event::End(TagEnd::Link) => pango.push_str("</a>"),
             Event::Start(Tag::CodeBlock(_)) => pango.push_str("<tt>"),

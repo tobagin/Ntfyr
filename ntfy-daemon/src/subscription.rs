@@ -43,12 +43,14 @@ impl SubscriptionHandle {
     pub fn new(listener: ListenerHandle, model: models::Subscription, env: &SharedEnv) -> Self {
         let (command_tx, command_rx) = mpsc::channel(32);
         let broadcast_tx = broadcast::channel(8).0;
+        let compiled_rules = compile_filter_rules(&model);
         let actor = SubscriptionActor {
             listener: listener.clone(),
             model,
             command_rx,
             env: env.clone(),
             broadcast_tx: broadcast_tx.clone(),
+            compiled_rules,
         };
         spawn_local(actor.run());
         Self {
@@ -136,6 +138,36 @@ struct SubscriptionActor {
     command_rx: mpsc::Receiver<SubscriptionCommand>,
     env: SharedEnv,
     broadcast_tx: broadcast::Sender<ListenerEvent>,
+    // Filter rules compiled once per model, with bounded memory, instead of
+    // recompiling every incoming message.
+    compiled_rules: Vec<(regex::Regex, models::FilterAction)>,
+}
+
+/// Compile a subscription's filter rules with bounded memory/size limits.
+/// Invalid or oversized patterns are skipped (and logged) rather than
+/// recompiled on every message.
+fn compile_filter_rules(
+    model: &models::Subscription,
+) -> Vec<(regex::Regex, models::FilterAction)> {
+    let Some(rules) = &model.rules else {
+        return Vec::new();
+    };
+    rules
+        .iter()
+        .filter_map(|rule| {
+            match regex::RegexBuilder::new(&rule.regex)
+                .size_limit(1 << 20)
+                .dfa_size_limit(1 << 20)
+                .build()
+            {
+                Ok(re) => Some((re, rule.action.clone())),
+                Err(e) => {
+                    warn!(error=?e, pattern=%rule.regex, "skipping invalid or oversized filter rule");
+                    None
+                }
+            }
+        })
+        .collect()
 }
 
 impl SubscriptionActor {
@@ -170,6 +202,7 @@ impl SubscriptionActor {
                             let res = self.env.db.update_subscription(new_model.clone());
                             if let Ok(_) = res {
                                 self.model = new_model;
+                                self.compiled_rules = compile_filter_rules(&self.model);
                             }
                             let _ = resp_tx.send(res.map_err(|e| e.into()));
                         }
@@ -266,6 +299,12 @@ impl SubscriptionActor {
                 };
                 use base64::{engine::general_purpose, Engine as _};
                 let key_bytes = general_purpose::STANDARD.decode(key_str).map_err(|e| anyhow::anyhow!("Invalid key: {}", e))?;
+                if key_bytes.len() != 32 {
+                    return Err(anyhow::anyhow!(
+                        "Invalid key length: expected 32 bytes, got {}",
+                        key_bytes.len()
+                    ));
+                }
                 let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
                 let cipher = Aes256Gcm::new(key);
 
@@ -307,17 +346,17 @@ impl SubscriptionActor {
         Ok(())
     }
     fn check_filters(&self, msg: &ReceivedMessage) -> Option<models::FilterAction> {
-        let Some(rules) = &self.model.rules else { return None };
+        if self.compiled_rules.is_empty() {
+            return None;
+        }
         let mut text = msg.display_title().unwrap_or_default();
         text.push_str(" ");
         text.push_str(&msg.display_message().unwrap_or_default());
-        
-        for rule in rules {
-             if let Ok(re) = regex::Regex::new(&rule.regex) {
-                 if re.is_match(&text) {
-                     return Some(rule.action.clone());
-                 }
-             }
+
+        for (re, action) in &self.compiled_rules {
+            if re.is_match(&text) {
+                return Some(action.clone());
+            }
         }
         None
     }

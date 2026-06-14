@@ -8,7 +8,7 @@ use gettextrs::gettext;
 use gtk::{gio, glib};
 use ntfy_daemon::models;
 use ntfy_daemon::NtfyHandle;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::application::NtfyrApplication;
 use crate::config::{APP_ID, PROFILE};
@@ -1223,21 +1223,24 @@ impl NtfyrWindow {
         
         let this = self.clone();
         self.error_boundary().spawn(async move {
-            let stored = crate::secrets::get_password().await.unwrap_or_else(|e| {
-                warn!("Failed to get password: {}", e);
-                None
-            });
-            
-            let unlocked = if let Some(stored_pass) = stored {
-                if entry_text == stored_pass {
+            let unlocked = match crate::secrets::get_password().await {
+                Ok(Some(stored_pass)) => {
+                    // Constant-time comparison so unlock attempts don't leak the
+                    // stored password byte-by-byte via timing.
+                    use subtle::ConstantTimeEq;
+                    bool::from(entry_text.as_bytes().ct_eq(stored_pass.as_bytes()))
+                }
+                Ok(None) => {
+                    // No password configured: nothing to verify against.
+                    warn!("App lock enabled but no password set.");
                     true
-                } else {
+                }
+                Err(e) => {
+                    // Keyring unavailable or read error: fail closed rather than
+                    // silently granting access.
+                    error!("Failed to read app lock password, denying unlock: {}", e);
                     false
                 }
-            } else {
-                // No password set, allow unlock but warn
-                warn!("App lock enabled but no password set.");
-                true
             };
 
             if unlocked {

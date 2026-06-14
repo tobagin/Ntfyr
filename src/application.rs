@@ -19,6 +19,81 @@ use crate::tray;
 // Unlock feature
 use crate::widgets::NtfyrWindow;
 
+/// True if `url` is a plain http(s) URL safe to hand to an external handler.
+/// Rejects non-http schemes (file:, tel:, mailto:, …) that a server-controlled
+/// action could otherwise abuse.
+fn is_safe_http_url(url: &str) -> bool {
+    matches!(
+        url::Url::parse(url).map(|u| u.scheme().to_owned()),
+        Ok(scheme) if scheme == "http" || scheme == "https"
+    )
+}
+
+/// Stricter check for outbound HTTP actions the app issues itself: requires
+/// http(s) and blocks loopback / private / link-local hosts to limit SSRF into
+/// local or intranet services.
+fn is_safe_outbound_url(url: &str) -> bool {
+    let Ok(u) = url::Url::parse(url) else {
+        return false;
+    };
+    if u.scheme() != "http" && u.scheme() != "https" {
+        return false;
+    }
+    match u.host() {
+        Some(url::Host::Ipv4(ip)) => {
+            !(ip.is_loopback()
+                || ip.is_private()
+                || ip.is_link_local()
+                || ip.is_unspecified()
+                || ip.is_broadcast())
+        }
+        Some(url::Host::Ipv6(ip)) => !(ip.is_loopback() || ip.is_unspecified()),
+        Some(url::Host::Domain(d)) => {
+            let d = d.to_ascii_lowercase();
+            d != "localhost" && !d.ends_with(".localhost")
+        }
+        None => false,
+    }
+}
+
+/// Issue a (user-confirmed) server-defined HTTP action request off the main
+/// thread.
+fn issue_http_action(
+    method: String,
+    url: String,
+    body: String,
+    headers: std::collections::HashMap<String, String>,
+) {
+    gio::spawn_blocking(move || {
+        let agent = ureq::Agent::new_with_config(Default::default());
+
+        macro_rules! set_headers {
+            ($req:expr) => {{
+                let mut r = $req;
+                for (k, v) in headers.iter() {
+                    r = r.header(k, v);
+                }
+                r
+            }};
+        }
+
+        let res = match method.as_str() {
+            "GET" => set_headers!(agent.get(url.as_str())).call(),
+            "POST" => set_headers!(agent.post(url.as_str())).send(body.as_bytes()),
+            "PUT" => set_headers!(agent.put(url.as_str())).send(body.as_bytes()),
+            "DELETE" => set_headers!(agent.delete(url.as_str())).call(),
+            "HEAD" => set_headers!(agent.head(url.as_str())).call(),
+            "PATCH" => set_headers!(agent.patch(url.as_str())).send(body.as_bytes()),
+            "OPTIONS" => set_headers!(agent.options(url.as_str())).call(),
+            "TRACE" => set_headers!(agent.trace(url.as_str())).call(),
+            _ => set_headers!(agent.get(url.as_str())).call(),
+        };
+        if let Err(e) = res {
+            error!(error = ?e, "Error sending request");
+        }
+    });
+}
+
 mod imp {
     use std::cell::RefCell;
 
@@ -260,6 +335,13 @@ impl NtfyrApplication {
     fn handle_message_action(&self, action: models::Action) {
         match action {
             models::Action::View { url, .. } => {
+                // `url` is server-controlled. Only hand http(s) URIs to the
+                // external handler — never file:, tel:, mailto:, or other
+                // schemes a malicious message could abuse.
+                if !is_safe_http_url(&url) {
+                    warn!(url = %url, "refusing to open view action with non-http(s) url");
+                    return;
+                }
                 gtk::UriLauncher::builder().uri(url.clone()).build().launch(
                     gtk::Window::NONE,
                     gio::Cancellable::NONE,
@@ -273,37 +355,29 @@ impl NtfyrApplication {
                 headers,
                 ..
             } => {
-                gio::spawn_blocking(move || {
-                    let agent = ureq::Agent::new_with_config(
-                        Default::default()
-                    );
-                    
-                    macro_rules! set_headers {
-                        ($req:expr) => {{
-                            let mut r = $req;
-                            for (k, v) in headers.iter() {
-                                r = r.header(k, v);
-                            }
-                            r
-                        }}
-                    }
-
-                   let res = match method.as_str() {
-                        "GET" => set_headers!(agent.get(url.as_str())).call(),
-                        "POST" => set_headers!(agent.post(url.as_str())).send(body.as_bytes()),
-                        "PUT" => set_headers!(agent.put(url.as_str())).send(body.as_bytes()),
-                        "DELETE" => set_headers!(agent.delete(url.as_str())).call(),
-                        "HEAD" => set_headers!(agent.head(url.as_str())).call(),
-                        "PATCH" => set_headers!(agent.patch(url.as_str())).send(body.as_bytes()),
-                        "OPTIONS" => set_headers!(agent.options(url.as_str())).call(),
-                        "TRACE" => set_headers!(agent.trace(url.as_str())).call(),
-                        _ => set_headers!(agent.get(url.as_str())).call(),
-                    };
-                    match res {
-                        Err(e) => {
-                            error!(error = ?e, "Error sending request");
-                        }
-                        Ok(_) => {}
+                // The destination URL, method, headers and body are entirely
+                // server-controlled. Block non-http(s) schemes and local /
+                // private / link-local targets to limit SSRF into local
+                // services, then require explicit user confirmation showing the
+                // real target before issuing the request.
+                if !is_safe_outbound_url(&url) {
+                    warn!(url = %url, "refusing http action to unsafe or non-http(s) url");
+                    return;
+                }
+                let parent = self.imp().window.borrow().upgrade();
+                let dialog = adw::AlertDialog::new(
+                    Some(&gettext("Send HTTP Request?")),
+                    Some(&format!("{} {}", method, url)),
+                );
+                dialog.add_response("cancel", &gettext("Cancel"));
+                dialog.add_response("send", &gettext("Send"));
+                dialog.set_response_appearance("send", adw::ResponseAppearance::Suggested);
+                dialog.set_default_response(Some("cancel"));
+                dialog.set_close_response("cancel");
+                glib::MainContext::default().spawn_local(async move {
+                    let response = dialog.choose_future(parent.as_ref()).await;
+                    if response == "send" {
+                        issue_http_action(method, url, body, headers);
                     }
                 });
             }

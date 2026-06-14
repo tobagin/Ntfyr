@@ -13,8 +13,6 @@ finish-args:
   - --device=dri
   - --talk-name=org.kde.StatusNotifierWatcher
   - --talk-name=org.freedesktop.secrets
-  - --socket=system-bus
-  - --system-talk-name=org.freedesktop.PolicyKit1
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
   build-args:

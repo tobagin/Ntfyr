@@ -38,3 +38,5 @@ relm4-macros = { version = "0.10.1", features = [], default-features = false }
 ksni = "0.3.3"
 pulldown-cmark = "0.13.0"
 oo7 = "0.6"
+url = "2.4"
+subtle = "2.6"
