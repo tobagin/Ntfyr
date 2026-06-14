@@ -11,9 +11,9 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.4.1 - Quick Fix
+## 🎉 Version 0.6.2 - Security Release
 
-**Ntfyr 0.4.1** is a quick fix release to address AppStream metadata issues.
+**Ntfyr 0.6.2** is a security release addressing findings from a full audit.
 
 ### ✨ Key Features
 
@@ -26,10 +26,12 @@ A native ntfy.sh client for the GNOME Desktop.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organizational.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
-### 🆕 What's New in 0.4.1
+### 🆕 What's New in 0.6.2
 
-- **Fixed**: AppStream metadata validation.
-- **Improved**: Release description formatting.
+- **Security**: Escape markdown link URLs to prevent markup injection from notification content.
+- **Security**: Restrict notification action URLs to http(s) and confirm HTTP actions before sending.
+- **Security**: Constant-time app-lock password checks that fail closed on keyring errors.
+- **Security**: Hardened the daemon against malformed or malicious server data.
 
 For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md).
 
