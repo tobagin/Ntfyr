@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-06-30
+
+### ✨ Added
+
+- **Delete single notifications**: Remove individual notifications with a trash button on each message row, in both the per-topic view and the unified inbox.
+- **Filter by priority and tags**: Filter rules can now match on an exact priority and required tags in addition to an optional regex pattern; existing regex-only rules keep working.
+- **Notification updates**: Honour ntfy's update/clear/delete feature — an updated notification replaces the original instead of appearing as a duplicate, cleared/deleted notifications are removed, and updated messages show an "Edited" badge.
+- **Localized READMEs**: German, Spanish, French, Portuguese, and Russian translations of the README, with a language switcher.
+
 ## [0.6.2] - 2026-06-14
 
 ### 🔒 Security

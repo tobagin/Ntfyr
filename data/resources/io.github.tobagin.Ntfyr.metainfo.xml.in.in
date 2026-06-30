@@ -52,6 +52,17 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.7.0" date="2026-06-30">
+      <description>
+        <p>Feature release.</p>
+        <ul>
+          <li>Delete individual notifications from the message list.</li>
+          <li>Filter rules can match on priority and tags, not just a regex.</li>
+          <li>Notification updates replace the original instead of showing duplicates, and are marked as edited.</li>
+          <li>Added German, Spanish, French, Portuguese, and Russian README translations.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.2" date="2026-06-14">
       <description>
         <p>Security release.</p>

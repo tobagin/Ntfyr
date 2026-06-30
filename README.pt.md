@@ -13,10 +13,11 @@ Cliente nativo de [ntfy.sh](https://ntfy.sh/) para o ambiente de trabalho GNOME.
 
 </div>
 
-## Última versão: 0.6.2
+## Última versão: 0.7.0
 
 Destaques recentes (histórico completo em [CHANGELOG.md](CHANGELOG.md)):
 
+- **0.7.0 — versão de funcionalidades** — eliminar notificações individuais, filtrar por prioridade e etiquetas, e suporte às atualizações de notificações do ntfy (as notificações atualizadas substituem a original e são marcadas como «Editado»).
 - **0.6.2 — versão de segurança** — correções de uma auditoria completa: escape de URLs em ligações Markdown, restrição das URLs de ação a http(s) com confirmação, verificações do bloqueio da aplicação em tempo constante e um daemon reforçado contra dados malformados do servidor.
 - **Selector de idioma da interface** — escolha o idioma nas Preferências (sistema, inglês US/UK, russo, alemão, espanhol, francês, português PT/BR); após reiniciar, as traduções aplicam-se a toda a aplicação.
 - **Histórico ao subscrever** — novas subscrições carregam a cache do tópico no servidor sem reenviar mensagens apagadas nem inundar com alertas de secretária.

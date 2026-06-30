@@ -13,9 +13,9 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.6.2 - Security Release
+## 🎉 Version 0.7.0
 
-**Ntfyr 0.6.2** is a security release addressing findings from a full audit.
+**Ntfyr 0.7.0** adds per-notification management, richer filtering, and support for ntfy's notification updates.
 
 ### ✨ Key Features
 
@@ -28,12 +28,12 @@ A native ntfy.sh client for the GNOME Desktop.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organizational.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
-### 🆕 What's New in 0.6.2
+### 🆕 What's New in 0.7.0
 
-- **Security**: Escape markdown link URLs to prevent markup injection from notification content.
-- **Security**: Restrict notification action URLs to http(s) and confirm HTTP actions before sending.
-- **Security**: Constant-time app-lock password checks that fail closed on keyring errors.
-- **Security**: Hardened the daemon against malformed or malicious server data.
+- **Delete single notifications**: Remove individual notifications with a trash button on each message row, in both the per-topic view and the unified inbox.
+- **Filter by priority and tags**: Filter rules can now match on an exact priority and required tags in addition to an optional regex.
+- **Notification updates**: Updated notifications replace the original instead of showing duplicates (marked **Edited**); cleared and deleted notifications are removed.
+- **More translations**: Added German, Spanish, French, Portuguese, and Russian README pages.
 
 For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md).
 
