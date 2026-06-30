@@ -223,6 +223,8 @@ impl Subscription {
             ListenerEvent::ConnectionStateChanged(connection_state) => {
                 self.set_connection_state(connection_state);
             }
+            // Handled in the daemon (converted to MessagesReset); never reaches here.
+            ListenerEvent::MessageRemoved { .. } => {}
         }
     }
 
@@ -377,6 +379,11 @@ impl Subscription {
     #[instrument(skip_all)]
     pub async fn clear_notifications(&self) -> anyhow::Result<()> {
         self.imp().client.get().unwrap().clear_notifications().await?;
+        Ok(())
+    }
+
+    pub async fn delete_message(&self, id: String) -> anyhow::Result<()> {
+        self.imp().client.get().unwrap().delete_message(id).await?;
         Ok(())
     }
 

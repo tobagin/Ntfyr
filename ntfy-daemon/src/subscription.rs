@@ -27,6 +27,10 @@ enum SubscriptionCommand {
     ClearNotifications {
         resp_tx: oneshot::Sender<anyhow::Result<()>>,
     },
+    DeleteMessage {
+        id: String,
+        resp_tx: oneshot::Sender<anyhow::Result<()>>,
+    },
     UpdateReadUntil {
         timestamp: u64,
         resp_tx: oneshot::Sender<anyhow::Result<()>>,
@@ -122,6 +126,15 @@ impl SubscriptionHandle {
         resp_rx.await.unwrap()
     }
 
+    pub async fn delete_message(&self, id: String) -> anyhow::Result<()> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        self.command_tx
+            .send(SubscriptionCommand::DeleteMessage { id, resp_tx })
+            .await
+            .unwrap();
+        resp_rx.await.unwrap()
+    }
+
     pub async fn update_read_until(&self, timestamp: u64) -> anyhow::Result<()> {
         let (resp_tx, resp_rx) = oneshot::channel();
         self.command_tx
@@ -140,32 +153,75 @@ struct SubscriptionActor {
     broadcast_tx: broadcast::Sender<ListenerEvent>,
     // Filter rules compiled once per model, with bounded memory, instead of
     // recompiling every incoming message.
-    compiled_rules: Vec<(regex::Regex, models::FilterAction)>,
+    compiled_rules: Vec<CompiledRule>,
+}
+
+/// A filter rule with its regex pre-compiled. A message matches when every
+/// criterion that is set (regex, priority, tags) matches; a rule with no
+/// criteria at all never matches.
+struct CompiledRule {
+    regex: Option<regex::Regex>,
+    priority: Option<i8>,
+    tags: Vec<String>,
+    action: models::FilterAction,
+}
+
+impl CompiledRule {
+    fn matches(&self, text: &str, msg: &ReceivedMessage) -> bool {
+        let mut has_criteria = false;
+        if let Some(re) = &self.regex {
+            has_criteria = true;
+            if !re.is_match(text) {
+                return false;
+            }
+        }
+        if let Some(p) = self.priority {
+            has_criteria = true;
+            if msg.priority != Some(p) {
+                return false;
+            }
+        }
+        if !self.tags.is_empty() {
+            has_criteria = true;
+            if !self.tags.iter().all(|t| msg.tags.contains(t)) {
+                return false;
+            }
+        }
+        has_criteria
+    }
 }
 
 /// Compile a subscription's filter rules with bounded memory/size limits.
 /// Invalid or oversized patterns are skipped (and logged) rather than
 /// recompiled on every message.
-fn compile_filter_rules(
-    model: &models::Subscription,
-) -> Vec<(regex::Regex, models::FilterAction)> {
+fn compile_filter_rules(model: &models::Subscription) -> Vec<CompiledRule> {
     let Some(rules) = &model.rules else {
         return Vec::new();
     };
     rules
         .iter()
         .filter_map(|rule| {
-            match regex::RegexBuilder::new(&rule.regex)
-                .size_limit(1 << 20)
-                .dfa_size_limit(1 << 20)
-                .build()
-            {
-                Ok(re) => Some((re, rule.action.clone())),
-                Err(e) => {
-                    warn!(error=?e, pattern=%rule.regex, "skipping invalid or oversized filter rule");
-                    None
+            let regex = if rule.regex.is_empty() {
+                None
+            } else {
+                match regex::RegexBuilder::new(&rule.regex)
+                    .size_limit(1 << 20)
+                    .dfa_size_limit(1 << 20)
+                    .build()
+                {
+                    Ok(re) => Some(re),
+                    Err(e) => {
+                        warn!(error=?e, pattern=%rule.regex, "skipping invalid or oversized filter rule");
+                        return None;
+                    }
                 }
-            }
+            };
+            Some(CompiledRule {
+                regex,
+                priority: rule.priority,
+                tags: rule.tags.clone(),
+                action: rule.action.clone(),
+            })
         })
         .collect()
 }
@@ -178,6 +234,7 @@ impl SubscriptionActor {
                     debug!(?event, "received listener event");
                     match event {
                         ListenerEvent::Message(msg) => self.handle_msg_event(msg),
+                        ListenerEvent::MessageRemoved { seq_id } => self.handle_message_removed(seq_id),
                         other => {
                             let _ = self.broadcast_tx.send(other);
                         }
@@ -275,6 +332,24 @@ impl SubscriptionActor {
                             });
                             let _ = resp_tx.send(Ok(()));
                         }
+                        SubscriptionCommand::DeleteMessage { id, resp_tx } => {
+                            debug!(topic=?self.model.topic, id=?id, "deleting single message");
+                            let res = self.env.db.delete_message(
+                                &self.model.server,
+                                &self.model.topic,
+                                &id,
+                            );
+                            if let Err(e) = res {
+                                let _ = resp_tx.send(Err(anyhow::anyhow!(e)));
+                                continue;
+                            }
+                            let messages = self.stored_messages_snapshot();
+                            let _ = self.broadcast_tx.send(ListenerEvent::MessagesReset {
+                                read_until: self.model.read_until,
+                                messages,
+                            });
+                            let _ = resp_tx.send(Ok(()));
+                        }
                         SubscriptionCommand::UpdateReadUntil { timestamp, resp_tx } => {
                             debug!(topic=?self.model.topic, timestamp=timestamp, "updating read until timestamp");
                             let res = self.env.db.update_read_until(&self.model.server, &self.model.topic, timestamp);
@@ -353,9 +428,9 @@ impl SubscriptionActor {
         text.push_str(" ");
         text.push_str(&msg.display_message().unwrap_or_default());
 
-        for (re, action) in &self.compiled_rules {
-            if re.is_match(&text) {
-                return Some(action.clone());
+        for rule in &self.compiled_rules {
+            if rule.matches(&text, msg) {
+                return Some(rule.action.clone());
             }
         }
         None
@@ -435,6 +510,19 @@ impl SubscriptionActor {
              return;
         }
 
+        // ntfy notification updates are append-only: an update arrives as a new
+        // message carrying `sequence_id` = the original's id. Drop the messages
+        // it supersedes so the cache holds only the latest version.
+        let is_update = msg.sequence_id.is_some();
+        if is_update {
+            let seq_key = msg.seq_key().to_string();
+            if let Err(e) =
+                self.env.db.delete_by_seq_key(&self.model.server, &self.model.topic, &seq_key)
+            {
+                error!(error=?e, topic=?self.model.topic, "failed to remove superseded message(s)");
+            }
+        }
+
         // Store in database
         let already_stored: bool = {
             let json_ev = &serde_json::to_string(&msg).unwrap();
@@ -502,10 +590,37 @@ impl SubscriptionActor {
                 debug!(topic=?self.model.topic, "notification muted, skipping");
             }
 
-            // Forward to app
+            // Forward to app. An update replaced cached rows, so the app must
+            // rebuild its list (a plain append would leave the stale copy);
+            // a fresh message just appends.
             debug!(topic=?self.model.topic, "forwarding message to app");
-            let _ = self.broadcast_tx.send(ListenerEvent::Message(msg));
+            if is_update {
+                let messages = self.stored_messages_snapshot();
+                let _ = self.broadcast_tx.send(ListenerEvent::MessagesReset {
+                    read_until: self.model.read_until,
+                    messages,
+                });
+            } else {
+                let _ = self.broadcast_tx.send(ListenerEvent::Message(msg));
+            }
         }
+    }
+
+    /// Sender cleared or deleted a notification: drop its sequence from the
+    /// cache and have the app rebuild its list.
+    fn handle_message_removed(&mut self, seq_id: String) {
+        debug!(topic=?self.model.topic, seq_id=?seq_id, "removing cleared/deleted message");
+        if let Err(e) =
+            self.env.db.delete_by_seq_key(&self.model.server, &self.model.topic, &seq_id)
+        {
+            error!(error=?e, topic=?self.model.topic, "failed to remove cleared/deleted message");
+            return;
+        }
+        let messages = self.stored_messages_snapshot();
+        let _ = self.broadcast_tx.send(ListenerEvent::MessagesReset {
+            read_until: self.model.read_until,
+            messages,
+        });
     }
 }
 
@@ -518,4 +633,67 @@ fn portal_notification_id(server: &str, topic: &str) -> Option<String> {
     let digest = hasher.finalize();
     let slug: String = digest.iter().take(12).map(|b| format!("{:02x}", b)).collect();
     Some(format!("io.github.tobagin.Ntfyr.z{slug}"))
+}
+
+#[cfg(test)]
+mod filter_tests {
+    use super::*;
+    use crate::models::FilterAction;
+
+    fn rule(regex: &str, priority: Option<i8>, tags: &[&str]) -> CompiledRule {
+        compile_filter_rules(&models::Subscription {
+            server: "https://ntfy.sh".into(),
+            topic: "t".into(),
+            display_name: String::new(),
+            muted: false,
+            archived: false,
+            reserved: false,
+            symbolic_icon: None,
+            read_until: 0,
+            listen_since: 0,
+            schedule: None,
+            rules: Some(vec![models::FilterRule {
+                name: "r".into(),
+                regex: regex.into(),
+                action: FilterAction::Discard,
+                priority,
+                tags: tags.iter().map(|s| s.to_string()).collect(),
+            }]),
+        })
+        .pop()
+        .unwrap()
+    }
+
+    fn msg(text: &str, priority: Option<i8>, tags: &[&str]) -> ReceivedMessage {
+        ReceivedMessage {
+            message: Some(text.into()),
+            priority,
+            tags: tags.iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn matches_on_each_criterion_and_combinations() {
+        let m = msg("hello spam", Some(5), &["warning", "skull"]);
+
+        // single criteria
+        assert!(rule("spam", None, &[]).matches("hello spam", &m));
+        assert!(rule("", Some(5), &[]).matches("hello spam", &m));
+        assert!(rule("", None, &["skull"]).matches("hello spam", &m));
+
+        // priority must be exact
+        assert!(!rule("", Some(4), &[]).matches("hello spam", &m));
+
+        // all tags required (AND)
+        assert!(rule("", None, &["warning", "skull"]).matches("hello spam", &m));
+        assert!(!rule("", None, &["warning", "missing"]).matches("hello spam", &m));
+
+        // combined criteria are ANDed: regex matches but priority doesn't -> no match
+        assert!(!rule("spam", Some(4), &[]).matches("hello spam", &m));
+        assert!(rule("spam", Some(5), &["skull"]).matches("hello spam", &m));
+
+        // empty rule (no criteria) never matches
+        assert!(!rule("", None, &[]).matches("hello spam", &m));
+    }
 }

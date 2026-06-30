@@ -276,6 +276,33 @@ impl Db {
         }
         Ok(())
     }
+    pub fn delete_message(&mut self, server: &str, topic: &str, id: &str) -> Result<(), Error> {
+        let server_id = self.get_or_insert_server(server).unwrap();
+        let conn = self.conn.read().unwrap();
+        conn.execute(
+            "DELETE FROM message
+            WHERE server = ?1 AND topic = ?2 AND data ->> 'id' = ?3
+            ",
+            params![server_id, topic, id],
+        )?;
+        Ok(())
+    }
+
+    /// Remove every message belonging to a notification sequence: the original
+    /// (id == seq_key) and any updates (sequence_id == seq_key).
+    pub fn delete_by_seq_key(&mut self, server: &str, topic: &str, seq_key: &str) -> Result<(), Error> {
+        let server_id = self.get_or_insert_server(server).unwrap();
+        let conn = self.conn.read().unwrap();
+        conn.execute(
+            "DELETE FROM message
+            WHERE server = ?1 AND topic = ?2
+              AND (data ->> 'id' = ?3 OR data ->> 'sequence_id' = ?3)
+            ",
+            params![server_id, topic, seq_key],
+        )?;
+        Ok(())
+    }
+
     pub fn delete_messages(&mut self, server: &str, topic: &str) -> Result<(), Error> {
         let server_id = self.get_or_insert_server(server).unwrap();
         let conn = self.conn.read().unwrap();
@@ -351,6 +378,41 @@ mod tests {
         assert_eq!(sub.read_until, read_until);
         assert_eq!(sub.listen_since, 0);
         assert_eq!(since, 0);
+    }
+
+    fn update_message_json(topic: &str, id: &str, seq: &str, time: u64) -> String {
+        format!(
+            r#"{{"id":"{id}","sequence_id":"{seq}","time":{time},"event":"message","topic":"{topic}","message":"updated"}}"#
+        )
+    }
+
+    #[test]
+    fn delete_by_seq_key_replaces_a_notification_sequence() {
+        let mut db = Db::connect(":memory:").unwrap();
+        let sub = models::Subscription::builder("alerts".into())
+            .server("https://ntfy.example".into())
+            .build()
+            .unwrap();
+        db.insert_subscription(sub.clone()).unwrap();
+
+        // Original notification, then an update referencing it via sequence_id.
+        db.insert_message(&sub.server, &sample_message_json("alerts", "orig", 1_700_000_010))
+            .unwrap();
+        db.delete_by_seq_key(&sub.server, &sub.topic, "orig").unwrap();
+        db.insert_message(
+            &sub.server,
+            &update_message_json("alerts", "upd", "orig", 1_700_000_020),
+        )
+        .unwrap();
+
+        // Only the updated message survives.
+        let stored = db.list_messages(&sub.server, &sub.topic, 0).unwrap();
+        assert_eq!(stored.len(), 1);
+        assert!(stored[0].contains("\"id\":\"upd\""));
+
+        // A clear/delete for the sequence removes the update too (matches by sequence_id).
+        db.delete_by_seq_key(&sub.server, &sub.topic, "orig").unwrap();
+        assert!(db.list_messages(&sub.server, &sub.topic, 0).unwrap().is_empty());
     }
 
     #[test]

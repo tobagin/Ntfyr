@@ -40,11 +40,22 @@ pub enum ServerEvent {
         expires: Option<usize>,
         topic: String,
     },
+    /// Sender cleared (mark-read + dismiss) the notification with this sequence_id.
+    #[serde(rename = "message_clear")]
+    MessageClear { sequence_id: String },
+    /// Sender deleted the notification with this sequence_id.
+    #[serde(rename = "message_delete")]
+    MessageDelete { sequence_id: String },
 }
 
 #[derive(Debug, Clone)]
 pub enum ListenerEvent {
     Message(models::ReceivedMessage),
+    /// A notification was cleared or deleted by the sender; remove the message
+    /// whose seq_key matches this sequence_id.
+    MessageRemoved {
+        seq_id: String,
+    },
     ConnectionStateChanged(ConnectionState),
     /// Replace in-memory message list after a durable clear/read bump (serialized with other events).
     MessagesReset {
@@ -265,6 +276,14 @@ impl ListenerActor {
                     ServerEvent::Open { id, .. } => {
                         debug!(id = %id, "received open event");
                     }
+                    ServerEvent::MessageClear { sequence_id }
+                    | ServerEvent::MessageDelete { sequence_id } => {
+                        debug!(seq_id = %sequence_id, "received clear/delete event");
+                        self.event_tx
+                            .send(ListenerEvent::MessageRemoved { seq_id: sequence_id })
+                            .await
+                            .unwrap();
+                    }
                 }
             }
 
@@ -382,6 +401,41 @@ impl ListenerHandle {
             .await
             .unwrap();
         rx.await.unwrap()
+    }
+}
+
+#[cfg(test)]
+mod parse_tests {
+    use super::*;
+
+    // JSON captured live from ntfy.sh (see issue #24).
+    #[test]
+    fn parses_update_and_clear_events() {
+        let update = r#"{"id":"upd","sequence_id":"orig","time":1,"event":"message","topic":"t","message":"50%"}"#;
+        match serde_json::from_str::<ServerEvent>(update).unwrap() {
+            ServerEvent::Message(m) => {
+                assert_eq!(m.id, "upd");
+                assert_eq!(m.sequence_id.as_deref(), Some("orig"));
+                assert_eq!(m.seq_key(), "orig");
+            }
+            other => panic!("expected Message, got {other:?}"),
+        }
+
+        let clear = r#"{"id":"x","sequence_id":"orig","time":2,"event":"message_clear","topic":"t"}"#;
+        match serde_json::from_str::<ServerEvent>(clear).unwrap() {
+            ServerEvent::MessageClear { sequence_id } => assert_eq!(sequence_id, "orig"),
+            other => panic!("expected MessageClear, got {other:?}"),
+        }
+
+        // A plain message has no sequence_id; seq_key falls back to its own id.
+        let plain = r#"{"id":"solo","time":3,"event":"message","topic":"t","message":"hi"}"#;
+        match serde_json::from_str::<ServerEvent>(plain).unwrap() {
+            ServerEvent::Message(m) => {
+                assert!(m.sequence_id.is_none());
+                assert_eq!(m.seq_key(), "solo");
+            }
+            other => panic!("expected Message, got {other:?}"),
+        }
     }
 }
 

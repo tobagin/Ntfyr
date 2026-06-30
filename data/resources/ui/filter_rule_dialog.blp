@@ -36,7 +36,27 @@ template $FilterRuleDialog: Adw.Dialog {
                 }
 
                 Adw.EntryRow regex_entry {
-                    title: _("Regex Pattern");
+                    title: _("Regex Pattern (optional)");
+                }
+
+                Adw.ComboRow priority_combo {
+                    title: _("Priority");
+                    subtitle: _("Match only this priority");
+
+                    model: Gtk.StringList {
+                        strings [
+                            _("Any"),
+                            _("Min"),
+                            _("Low"),
+                            _("Default"),
+                            _("High"),
+                            _("Max"),
+                        ]
+                    };
+                }
+
+                Adw.EntryRow tags_entry {
+                    title: _("Tags (comma-separated, optional)");
                 }
 
                 Adw.ComboRow action_combo {

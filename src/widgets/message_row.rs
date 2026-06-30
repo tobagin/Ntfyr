@@ -72,12 +72,12 @@ glib::wrapper! {
 }
 
 impl MessageRow {
-    pub fn new(msg: models::ReceivedMessage) -> Self {
+    pub fn new(msg: models::ReceivedMessage, on_delete: impl Fn() + 'static) -> Self {
         let this: Self = glib::Object::new();
-        this.build_ui(msg);
+        this.build_ui(msg, on_delete);
         this
     }
-    fn build_ui(&self, msg: models::ReceivedMessage) {
+    fn build_ui(&self, msg: models::ReceivedMessage, on_delete: impl Fn() + 'static) {
         self.set_margin_top(8);
         self.set_margin_bottom(8);
         self.set_margin_start(8);
@@ -100,7 +100,19 @@ impl MessageRow {
             .xalign(0.0)
             .build();
         time.add_css_class("caption");
-        self.attach(&time, 0, row, 1, 1);
+
+        // ntfy delivers an edited notification as a new message linked by
+        // sequence_id; flag it so the replacement isn't mistaken for the original.
+        let time_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        time_box.append(&time);
+        if msg.sequence_id.is_some() {
+            let edited = gtk::Label::builder().label(gettext("Edited")).build();
+            edited.add_css_class("caption");
+            edited.add_css_class("chip");
+            edited.set_valign(gtk::Align::Center);
+            time_box.append(&edited);
+        }
+        self.attach(&time_box, 0, row, 1, 1);
 
         if let Some(p) = msg.priority {
             let level = match p {
@@ -121,8 +133,18 @@ impl MessageRow {
                 priority.add_css_class("chip--warning")
             }
             priority.set_halign(gtk::Align::End);
-            self.attach(&priority, 1, 0, 2, 1);
+            self.attach(&priority, 1, 0, 1, 1);
         }
+
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .valign(gtk::Align::Start)
+            .halign(gtk::Align::End)
+            .tooltip_text(gettext("Delete notification"))
+            .css_classes(vec!["flat", "circular"])
+            .build();
+        delete_btn.connect_clicked(move |_| on_delete());
+        self.attach(&delete_btn, 2, 0, 1, 1);
         row += 1;
 
         if let Some(title) = msg.display_title() {

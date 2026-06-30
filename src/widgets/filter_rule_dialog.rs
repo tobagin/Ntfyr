@@ -15,6 +15,10 @@ mod imp {
         #[template_child]
         pub regex_entry: TemplateChild<adw::EntryRow>,
         #[template_child]
+        pub priority_combo: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub tags_entry: TemplateChild<adw::EntryRow>,
+        #[template_child]
         pub action_combo: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub add_btn: TemplateChild<gtk::Button>,
@@ -79,8 +83,23 @@ impl FilterRuleDialog {
         let imp = self.imp();
         let name = imp.name_entry.text().to_string();
         let regex = imp.regex_entry.text().to_string();
-        
-        if name.is_empty() || regex.is_empty() {
+
+        // Priority combo: 0 = Any (None), 1..=5 map directly to ntfy priorities.
+        let priority = match imp.priority_combo.selected() {
+            n @ 1..=5 => Some(n as i8),
+            _ => None,
+        };
+
+        let tags: Vec<String> = imp
+            .tags_entry
+            .text()
+            .split(',')
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty())
+            .collect();
+
+        // Need a name and at least one criterion to match on.
+        if name.is_empty() || (regex.is_empty() && priority.is_none() && tags.is_empty()) {
             return None;
         }
 
@@ -96,6 +115,8 @@ impl FilterRuleDialog {
             name,
             regex,
             action,
+            priority,
+            tags,
         })
     }
     

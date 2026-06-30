@@ -513,13 +513,34 @@ impl NtfyrWindow {
         let sorter: gtk::Sorter = sorter.upcast(); 
         let sort_model = gtk::SortListModel::new(Some(flatten_model), Some(sorter));
         
-        imp.unified_message_list.bind_model(Some(&sort_model), |obj| {
+        let this = self.clone();
+        imp.unified_message_list.bind_model(Some(&sort_model), move |obj| {
              let b = obj.downcast_ref::<glib::BoxedAnyObject>().unwrap();
              let msg = b.borrow::<models::ReceivedMessage>();
-             MessageRow::new(msg.clone()).upcast()
+             let id = msg.id.clone();
+             let this = this.clone();
+             MessageRow::new(msg.clone(), move || this.delete_message_anywhere(id.clone())).upcast()
         });
-        
+
         // Unified inbox selection is handled in subscription_list row_activated
+    }
+
+    /// Find the subscription that owns the message with `id` and delete it.
+    /// Used by the unified inbox, where the row alone doesn't know its server.
+    fn delete_message_anywhere(&self, id: String) {
+        let model = &self.imp().subscription_list_model;
+        for i in 0..model.n_items() {
+            let Some(sub) = model.item(i).and_downcast::<Subscription>() else { continue };
+            let msgs = sub.imp().messages.clone();
+            for j in 0..msgs.n_items() {
+                let Some(obj) = msgs.item(j).and_downcast::<glib::BoxedAnyObject>() else { continue };
+                let owns = obj.borrow::<models::ReceivedMessage>().id == id;
+                if owns {
+                    self.error_boundary().spawn(async move { sub.delete_message(id).await });
+                    return;
+                }
+            }
+        }
     }
 
     fn bind_message_list(&self) {
@@ -865,12 +886,21 @@ impl NtfyrWindow {
 
             let sort_model = gtk::SortListModel::new(Some(sub.imp().messages.clone()), Some(sorter));
 
+            let sub_for_rows = sub.clone();
+            let this = self.clone();
             imp.message_list
                 .bind_model(Some(&sort_model), move |obj| {
                     let b = obj.downcast_ref::<glib::BoxedAnyObject>().unwrap();
                     let msg = b.borrow::<models::ReceivedMessage>();
-
-                    MessageRow::new(msg.clone()).upcast()
+                    let id = msg.id.clone();
+                    let sub = sub_for_rows.clone();
+                    let this = this.clone();
+                    MessageRow::new(msg.clone(), move || {
+                        let sub = sub.clone();
+                        let id = id.clone();
+                        this.error_boundary().spawn(async move { sub.delete_message(id).await });
+                    })
+                    .upcast()
                 });
 
             let this = self.clone();

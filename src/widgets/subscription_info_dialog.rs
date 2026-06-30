@@ -290,8 +290,18 @@ impl SubscriptionInfoDialog {
 
     fn add_rule_row(&self, rule: &ntfy_daemon::models::FilterRule) {
         let imp = self.imp();
-        let subtitle = gettext("Regex: {} -> {}")
-            .replacen("{}", &rule.regex, 1)
+        let mut criteria = Vec::new();
+        if !rule.regex.is_empty() {
+            criteria.push(gettext("Regex: {}").replacen("{}", &rule.regex, 1));
+        }
+        if let Some(p) = rule.priority {
+            criteria.push(gettext("Priority: {}").replacen("{}", &p.to_string(), 1));
+        }
+        if !rule.tags.is_empty() {
+            criteria.push(gettext("Tags: {}").replacen("{}", &rule.tags.join(", "), 1));
+        }
+        let subtitle = gettext("{} -> {}")
+            .replacen("{}", &criteria.join(", "), 1)
             .replacen("{}", &Self::filter_action_label(&rule.action), 1);
         let row = adw::ActionRow::builder()
             .title(&rule.name)

@@ -31,6 +31,11 @@ pub fn validate_topic(topic: &str) -> Result<&str, Error> {
 pub struct ReceivedMessage {
     pub id: String,
     pub topic: String,
+    /// Links this message to an earlier one it updates/replaces. Set by ntfy's
+    /// notification-update feature; equals the original message's `id`.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sequence_id: Option<String>,
     pub expires: Option<u64>,
     pub message: Option<String>,
     #[serde(default = "Default::default")]
@@ -64,6 +69,11 @@ pub struct ReceivedMessage {
 
 
 impl ReceivedMessage {
+    /// The stable key identifying the notification this message belongs to:
+    /// its `sequence_id` if it is an update, otherwise its own `id`.
+    pub fn seq_key(&self) -> &str {
+        self.sequence_id.as_deref().unwrap_or(&self.id)
+    }
     fn extend_with_emojis(&self, text: &mut String) {
         // Add emojis
         for t in &self.tags {
@@ -186,6 +196,12 @@ pub struct FilterRule {
     pub name: String,
     pub regex: String,
     pub action: FilterAction,
+    /// Match only messages with this exact priority (1-5). None = any.
+    #[serde(default)]
+    pub priority: Option<i8>,
+    /// Match only messages carrying all of these tags. Empty = any.
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
