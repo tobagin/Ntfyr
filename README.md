@@ -1,5 +1,7 @@
 # Ntfyr
 
+**Languages:** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [Português](README.pt.md)
+
 A native ntfy.sh client for the GNOME Desktop.
 
 <div align="center">
