@@ -49,6 +49,6 @@ modules:
     sources:
       - type: git
         url: https://github.com/tobagin/Ntfyr
-        tag: v0.6.2
-        commit: 091b7c02094e349e72a8549d5234a310c30040af
+        tag: v0.7.0
+        commit: 675a4142de831ea8e1df2f205540e694dc35bb5b
       - cargo-sources.json
