@@ -168,7 +168,7 @@ impl MessageRow {
                 .selectable(true)
                 .hexpand(true)
                 .build();
-            if msg.markdown.unwrap_or_default() {
+            if msg.is_markdown() {
                 label.set_use_markup(true);
                 label.set_markup(&markdown_to_pango(&message));
             } else {

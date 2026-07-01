@@ -65,10 +65,19 @@ pub struct ReceivedMessage {
     pub actions: Vec<Action>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub markdown: Option<bool>,
+    /// ntfy flags markdown bodies with `content_type: "text/markdown"`; this is
+    /// the real signal on the wire (the `markdown` bool is not sent).
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
 }
 
 
 impl ReceivedMessage {
+    /// Whether the message body should be rendered as Markdown.
+    pub fn is_markdown(&self) -> bool {
+        self.content_type.as_deref() == Some("text/markdown") || self.markdown == Some(true)
+    }
     /// The stable key identifying the notification this message belongs to:
     /// its `sequence_id` if it is an update, otherwise its own `id`.
     pub fn seq_key(&self) -> &str {
@@ -482,5 +491,27 @@ impl NullNetworkMonitor {
 impl NetworkMonitorProxy for NullNetworkMonitor {
     fn listen(&self) -> Pin<Box<dyn Stream<Item = ()>>> {
         Box::pin(futures::stream::empty())
+    }
+}
+
+#[cfg(test)]
+mod markdown_tests {
+    use super::ReceivedMessage;
+
+    // JSON captured live from ntfy.sh (see issue #25): markdown is flagged by
+    // content_type, not a `markdown` boolean.
+    #[test]
+    fn detects_markdown_from_content_type() {
+        let md = r#"{"id":"a","topic":"t","time":1,"event":"message","message":"**b**","content_type":"text/markdown"}"#;
+        let msg: ReceivedMessage = serde_json::from_str(md).unwrap();
+        assert!(msg.is_markdown());
+
+        let plain = r#"{"id":"b","topic":"t","time":1,"event":"message","message":"hi"}"#;
+        let msg: ReceivedMessage = serde_json::from_str(plain).unwrap();
+        assert!(!msg.is_markdown());
+
+        let other = r#"{"id":"c","topic":"t","time":1,"event":"message","message":"hi","content_type":"text/plain"}"#;
+        let msg: ReceivedMessage = serde_json::from_str(other).unwrap();
+        assert!(!msg.is_markdown());
     }
 }
