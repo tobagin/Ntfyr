@@ -13,10 +13,11 @@ Client natif [ntfy.sh](https://ntfy.sh/) pour le bureau GNOME. Développé en Ru
 
 </div>
 
-## Dernière version : 0.7.0
+## Dernière version : 0.7.1
 
 Points récents (historique complet dans [CHANGELOG.md](CHANGELOG.md)) :
 
+- **0.7.1 — correction de bogues** — les notifications envoyées en Markdown sont désormais rendues (détectées via le type de contenu du message).
 - **0.7.0 — version fonctionnelle** — supprimer des notifications individuelles, filtrer par priorité et tags, et prise en charge des mises à jour de notifications ntfy (les notifications mises à jour remplacent l’originale et sont marquées « Modifié »).
 - **0.6.2 — version de sécurité** — corrections issues d’un audit complet : échappement des URL des liens Markdown, restriction des URL d’action à http(s) avec confirmation, vérifications du verrou applicatif à temps constant et démon durci contre les données serveur malformées.
 - **Sélecteur de langue de l’interface** — choisissez la langue dans les Préférences (système, anglais US/UK, russe, allemand, espagnol, français, portugais PT/BR) ; un redémarrage applique les traductions dans toute l’application.

@@ -52,6 +52,14 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.7.1" date="2026-07-01">
+      <description>
+        <p>Bug-fix release.</p>
+        <ul>
+          <li>Render notifications sent as Markdown (detected via the message content type).</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.0" date="2026-06-30">
       <description>
         <p>Feature release.</p>

@@ -13,10 +13,11 @@ Ein nativer [ntfy.sh](https://ntfy.sh/)-Client für den GNOME-Desktop. Entwickel
 
 </div>
 
-## Aktuelles Release: 0.7.0
+## Aktuelles Release: 0.7.1
 
 Auszug der neuesten Änderungen (vollständige Historie in [CHANGELOG.md](CHANGELOG.md)):
 
+- **0.7.1 — Fehlerbehebung** — als Markdown gesendete Benachrichtigungen werden nun gerendert (erkannt über den Content-Type der Nachricht).
 - **0.7.0 — Funktionsrelease** — einzelne Benachrichtigungen löschen, nach Priorität und Tags filtern und ntfy-Benachrichtigungsaktualisierungen unterstützen (aktualisierte Meldungen ersetzen das Original und werden als „Bearbeitet“ markiert).
 - **0.6.2 — Sicherheitsrelease** — Korrekturen aus einem vollständigen Sicherheitsaudit: Escaping von Markdown-Link-URLs, Beschränkung von Aktions-URLs auf http(s) mit Bestätigung, App-Sperre-Prüfungen in konstanter Laufzeit und ein gegen fehlerhafte Serverdaten gehärteter Daemon.
 - **Sprachauswahl in der Oberfläche** — Sprache in den Einstellungen wählen (System, Englisch US/UK, Russisch, Deutsch, Spanisch, Französisch, Portugiesisch PT/BR); nach Neustart gelten Übersetzungen app-weit.

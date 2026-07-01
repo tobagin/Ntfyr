@@ -13,9 +13,9 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.7.0
+## 🎉 Version 0.7.1
 
-**Ntfyr 0.7.0** adds per-notification management, richer filtering, and support for ntfy's notification updates.
+**Ntfyr 0.7.1** fixes Markdown rendering, on top of 0.7.0's per-notification management, richer filtering, and notification updates.
 
 ### ✨ Key Features
 
@@ -28,7 +28,11 @@ A native ntfy.sh client for the GNOME Desktop.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organizational.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
-### 🆕 What's New in 0.7.0
+### 🆕 What's New in 0.7.1
+
+- **Markdown rendering**: Notifications published as Markdown are now rendered (bold, italics, links, code).
+
+### Also in 0.7.0
 
 - **Delete single notifications**: Remove individual notifications with a trash button on each message row, in both the per-topic view and the unified inbox.
 - **Filter by priority and tags**: Filter rules can now match on an exact priority and required tags in addition to an optional regex.
