@@ -52,6 +52,15 @@
 
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="0.7.2" date="2026-08-10">
+      <description>
+        <p>Bug-fix release.</p>
+        <ul>
+          <li>Unified inbox now respects the Sort descending preference (newest messages at the top).</li>
+          <li>Updated Rust dependencies to latest compatible versions.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.1" date="2026-07-01">
       <description>
         <p>Bug-fix release.</p>

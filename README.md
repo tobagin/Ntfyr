@@ -13,9 +13,9 @@ A native ntfy.sh client for the GNOME Desktop.
 
 </div>
 
-## 🎉 Version 0.7.1
+## 🎉 Version 0.7.2
 
-**Ntfyr 0.7.1** fixes Markdown rendering, on top of 0.7.0's per-notification management, richer filtering, and notification updates.
+**Ntfyr 0.7.2** fixes Unified inbox sort direction, on top of 0.7.1's Markdown rendering, per-notification management, and richer filtering.
 
 ### ✨ Key Features
 
@@ -28,7 +28,12 @@ A native ntfy.sh client for the GNOME Desktop.
 - **🧩 Multiple Servers**: Group subscriptions by server for better organizational.
 - **🛡️ Privacy Focused**: Full support for self-hosted instances.
 
-### 🆕 What's New in 0.7.1
+### 🆕 What's New in 0.7.2
+
+- **Unified inbox sort fix**: Unified inbox now respects the Sort descending preference.
+- **Dependency updates**: Updated Rust dependencies to latest compatible versions.
+
+### Also in 0.7.1
 
 - **Markdown rendering**: Notifications published as Markdown are now rendered (bold, italics, links, code).
 

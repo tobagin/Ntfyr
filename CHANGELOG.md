@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-08-10
+
+### 🐛 Fixed
+
+- **Unified inbox sort direction (issue #26)**: The unified inbox now honors the `Sort descending` preference from Preferences. Previously the per-topic views were sorted correctly but the unified inbox captured the setting by value at startup and never re-sorted when the toggle changed. The sorter now reads the setting dynamically and is invalidated via `SorterChange::Different`.
+
+### 🔧 Changed
+
+- **Dependencies**: Updated Rust dependencies to latest compatible versions via `cargo update` (`gtk4 0.11.3→0.11.4`, `glib/gio 0.22.6→0.22.8`, `zbus 5.16→5.19`, `ashpd 0.13.11→0.13.13`, `aws-lc-sys 0.41.0→0.44.0`, `rustls 0.23.40→0.23.43`, `tokio 1.52→1.53`, `chrono 0.4.44→0.4.45`, and 150+ others).
+
 ## [0.7.1] - 2026-07-01
 
 ### 🐛 Fixed

@@ -13,10 +13,11 @@ Cliente nativo de [ntfy.sh](https://ntfy.sh/) para o ambiente de trabalho GNOME.
 
 </div>
 
-## Última versão: 0.7.1
+## Última versão: 0.7.2
 
 Destaques recentes (histórico completo em [CHANGELOG.md](CHANGELOG.md)):
 
+- **0.7.2 — correção de erros** — a caixa de entrada unificada agora respeita a ordenação decrescente.
 - **0.7.1 — correção de erros** — as notificações enviadas como Markdown passam a ser renderizadas (detetadas pelo tipo de conteúdo da mensagem).
 - **0.7.0 — versão de funcionalidades** — eliminar notificações individuais, filtrar por prioridade e etiquetas, e suporte às atualizações de notificações do ntfy (as notificações atualizadas substituem a original e são marcadas como «Editado»).
 - **0.6.2 — versão de segurança** — correções de uma auditoria completa: escape de URLs em ligações Markdown, restrição das URLs de ação a http(s) com confirmação, verificações do bloqueio da aplicação em tempo constante e um daemon reforçado contra dados malformados do servidor.
