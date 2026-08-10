@@ -74,6 +74,8 @@ mod imp {
         pub banner_binding: Cell<Option<(Subscription, glib::SignalHandlerId)>>,
         pub subscription_sorter: OnceCell<gtk::CustomSorter>,
         pub subscription_sort_model: OnceCell<gtk::SortListModel>,
+        pub unified_sorter: OnceCell<gtk::CustomSorter>,
+        pub unified_sort_model: OnceCell<gtk::SortListModel>,
         pub last_activity: Cell<std::time::Instant>,
     }
 
@@ -107,6 +109,8 @@ mod imp {
                 code_btn: Default::default(),
                 subscription_sorter: Default::default(),
                 subscription_sort_model: Default::default(),
+                unified_sorter: Default::default(),
+                unified_sort_model: Default::default(),
                 last_activity: Cell::new(std::time::Instant::now()),
             };
 
@@ -314,6 +318,9 @@ impl NtfyrWindow {
         let this = self.clone();
         settings.connect_changed(Some("sort-descending"), move |_, _| {
             this.selected_subscription_changed(this.selected_subscription().as_ref());
+            if let Some(sorter) = this.imp().unified_sorter.get() {
+                sorter.changed(gtk::SorterChange::Different);
+            }
         });
     }
 
@@ -492,26 +499,30 @@ impl NtfyrWindow {
         });
         
         let flatten_model = gtk::FlattenListModel::new(Some(map_model));
-        
-        let sort_descending = imp.settings.boolean("sort-descending");
+
+        let settings = imp.settings.clone();
         let sorter = gtk::CustomSorter::new(move |a, b| {
-                let a = a.downcast_ref::<glib::BoxedAnyObject>().unwrap();
-                let a = a.borrow::<models::ReceivedMessage>();
-                let b = b.downcast_ref::<glib::BoxedAnyObject>().unwrap();
-                let b = b.borrow::<models::ReceivedMessage>();
+            let a = a.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+            let a = a.borrow::<models::ReceivedMessage>();
+            let b = b.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+            let b = b.borrow::<models::ReceivedMessage>();
 
-                let time_a = a.time;
-                let time_b = b.time;
+            let time_a = a.time;
+            let time_b = b.time;
 
-                if sort_descending {
-                    time_b.cmp(&time_a).into()
-                } else {
-                    time_a.cmp(&time_b).into()
-                }
+            let sort_descending = settings.boolean("sort-descending");
+            if sort_descending {
+                time_b.cmp(&time_a).into()
+            } else {
+                time_a.cmp(&time_b).into()
+            }
         });
 
-        let sorter: gtk::Sorter = sorter.upcast(); 
-        let sort_model = gtk::SortListModel::new(Some(flatten_model), Some(sorter));
+        let sorter_clone = sorter.clone();
+        let sorter_upcast: gtk::Sorter = sorter.upcast();
+        let sort_model = gtk::SortListModel::new(Some(flatten_model), Some(sorter_upcast));
+        let _ = imp.unified_sorter.set(sorter_clone);
+        let _ = imp.unified_sort_model.set(sort_model.clone());
         
         let this = self.clone();
         imp.unified_message_list.bind_model(Some(&sort_model), move |obj| {
