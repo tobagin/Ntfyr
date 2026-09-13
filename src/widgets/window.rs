@@ -1,11 +1,12 @@
 use std::cell::Cell;
+use std::cell::RefCell;
 use std::cell::OnceCell;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 
-use gtk::{gio, glib};
+use gtk::{gdk, gio, glib};
 use ntfy_daemon::models;
 use ntfy_daemon::NtfyHandle;
 use tracing::{error, info, warn};
@@ -17,6 +18,26 @@ use anyhow::Result;
 use crate::subscription::Status;
 use crate::subscription::Subscription;
 use crate::widgets::*;
+
+fn themed_icon(candidates: &'static [&'static str]) -> &'static str {
+    let Some(display) = gdk::Display::default() else {
+        return candidates.last().copied().unwrap_or("dialog-information-symbolic");
+    };
+    let theme = gtk::IconTheme::for_display(&display);
+    candidates.iter().copied().find(|name| theme.has_icon(name)).unwrap_or_else(|| candidates.last().copied().unwrap_or("dialog-information-symbolic"))
+}
+
+fn themed_inbox_icon() -> &'static str {
+    themed_icon(&["view-list-symbolic", "folder-symbolic", "dialog-information-symbolic"])
+}
+
+fn themed_sort_icon() -> &'static str {
+    themed_icon(&[
+        "view-list-ordered-symbolic",
+        "view-sort-descending-symbolic",
+        "view-list-symbolic",
+    ])
+}
 
 mod imp {
     use super::*;
@@ -42,6 +63,8 @@ mod imp {
         pub subscription_view: TemplateChild<adw::ToolbarView>,
         #[template_child]
         pub subscription_menu_btn: TemplateChild<gtk::MenuButton>,
+        #[template_child]
+        pub sort_button: TemplateChild<gtk::ToggleButton>,
         pub subscription_list_model: gio::ListStore,
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
@@ -49,6 +72,8 @@ mod imp {
         pub stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub welcome_view: TemplateChild<adw::ToolbarView>,
+        #[template_child]
+        pub welcome_status_page: TemplateChild<adw::StatusPage>,
         #[template_child]
         pub list_view: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
@@ -77,6 +102,8 @@ mod imp {
         pub unified_sorter: OnceCell<gtk::CustomSorter>,
         pub unified_sort_model: OnceCell<gtk::SortListModel>,
         pub last_activity: Cell<std::time::Instant>,
+        pub suppress_auto_read: Cell<bool>,
+        pub pending_notification: RefCell<Option<(String, String)>>,
     }
 
     impl Default for NtfyrWindow {
@@ -88,12 +115,14 @@ mod imp {
                 subscription_view: Default::default(),
                 navigation_split_view: Default::default(),
                 subscription_menu_btn: Default::default(),
+                sort_button: Default::default(),
                 subscription_list: Default::default(),
                 main_stack: Default::default(),
                 lock_view: Default::default(),
                 toast_overlay: Default::default(),
                 stack: Default::default(),
                 welcome_view: Default::default(),
+                welcome_status_page: Default::default(),
                 list_view: Default::default(),
                 message_scroll: Default::default(),
                 banner: Default::default(),
@@ -112,6 +141,8 @@ mod imp {
                 unified_sorter: Default::default(),
                 unified_sort_model: Default::default(),
                 last_activity: Cell::new(std::time::Instant::now()),
+                suppress_auto_read: Cell::new(false),
+                pending_notification: RefCell::new(None),
             };
 
             this
@@ -252,6 +283,9 @@ impl NtfyrWindow {
         obj.connect_entry_and_send_btn();
         obj.connect_code_btn();
         obj.connect_items_changed();
+        obj.imp().sort_button.set_icon_name(themed_sort_icon());
+        obj.imp().welcome_status_page.set_icon_name(Some(themed_inbox_icon()));
+        obj.imp().settings.bind("sort-descending", &*obj.imp().sort_button, "active").build();
         obj.connect_settings_changed();
         obj.connect_server_changes();
         obj.selected_subscription_changed(None);
@@ -399,6 +433,49 @@ impl NtfyrWindow {
         });
     }
 
+    pub fn open_notification(&self, server: &str, topic: &str) {
+        *self.imp().pending_notification.borrow_mut() =
+            Some((server.to_string(), topic.to_string()));
+        self.try_open_pending_notification();
+    }
+
+    fn try_open_pending_notification(&self) {
+        let Some((server, topic)) = self.imp().pending_notification.borrow().clone() else {
+            return;
+        };
+        let list = &self.imp().subscription_list;
+        let mut index = 0;
+        while let Some(row) = list.row_at_index(index) {
+            let matches = unsafe {
+                row.data::<String>("server").map(|value| value.as_ref() == server.as_str()).unwrap_or(false)
+                    && row.data::<String>("topic").map(|value| value.as_ref() == topic.as_str()).unwrap_or(false)
+            };
+            if matches {
+                self.imp().pending_notification.borrow_mut().take();
+                self.imp().suppress_auto_read.set(true);
+                list.select_row(Some(&row));
+                if let Some(subscription) = self.selected_subscription() {
+                    self.selected_subscription_changed(Some(&subscription));
+                    self.imp().content_stack.set_visible_child(&*self.imp().subscription_view);
+                }
+                self.imp().navigation_split_view.set_show_content(true);
+                return;
+            }
+            index += 1;
+        }
+    }
+
+    pub fn dismiss_notification(&self, server: String, topic: String, timestamp: u64) {
+        for i in 0..self.imp().subscription_list_model.n_items() {
+            let Some(item) = self.imp().subscription_list_model.item(i) else { continue; };
+            let Ok(sub) = item.downcast::<Subscription>() else { continue; };
+            if sub.server() == server && sub.topic() == topic {
+                self.error_boundary().spawn(async move { sub.dismiss_message(timestamp).await });
+                return;
+            }
+        }
+    }
+
     pub fn purge_default_server_topics(&self) {
         let this = self.clone();
         
@@ -530,7 +607,19 @@ impl NtfyrWindow {
              let msg = b.borrow::<models::ReceivedMessage>();
              let id = msg.id.clone();
              let this = this.clone();
-             MessageRow::new(msg.clone(), move || this.delete_message_anywhere(id.clone())).upcast()
+             let delete_this = this.clone();
+             let seen_this = this;
+             let topic = msg.topic.clone();
+             let timestamp = msg.time;
+             let delete_id = id.clone();
+             let seen_id = id;
+             MessageRow::new(
+                 msg.clone(),
+                 false,
+                 move || delete_this.delete_message_anywhere(delete_id.clone()),
+                 move || seen_this.mark_message_seen_anywhere(topic.clone(), seen_id.clone(), timestamp),
+             )
+             .upcast()
         });
 
         // Unified inbox selection is handled in subscription_list row_activated
@@ -550,6 +639,28 @@ impl NtfyrWindow {
                     self.error_boundary().spawn(async move { sub.delete_message(id).await });
                     return;
                 }
+            }
+        }
+    }
+
+    fn mark_message_seen_anywhere(&self, topic: String, id: String, timestamp: u64) {
+        let model = &self.imp().subscription_list_model;
+        for i in 0..model.n_items() {
+            let Some(sub) = model.item(i).and_downcast::<Subscription>() else { continue };
+            if sub.topic() != topic {
+                continue;
+            }
+            let msgs = sub.imp().messages.clone();
+            let owns = (0..msgs.n_items()).any(|j| {
+                msgs.item(j)
+                    .and_downcast::<glib::BoxedAnyObject>()
+                    .map(|obj| obj.borrow::<models::ReceivedMessage>().id == id)
+                    .unwrap_or(false)
+            });
+            if owns {
+                self.error_boundary()
+                    .spawn(async move { sub.mark_message_seen(timestamp).await });
+                return;
             }
         }
     }
@@ -655,9 +766,11 @@ impl NtfyrWindow {
         // 1. Unified Inbox - ActionRow directly in ListBox (ActionRow IS a ListBoxRow)
         let inbox = adw::ActionRow::builder()
             .subtitle(&gettext("Unified Inbox"))
-            .icon_name("mail-read-symbolic")
             .activatable(true)
             .build();
+        let inbox_icon = gtk::Image::from_icon_name(themed_inbox_icon());
+        inbox_icon.set_pixel_size(16);
+        inbox.add_prefix(&inbox_icon);
         unsafe { inbox.set_data("unified-inbox", true); }
         list.append(&inbox);
         
@@ -705,6 +818,8 @@ impl NtfyrWindow {
                 list.append(&placeholder);
             }
         }
+
+        self.try_open_pending_notification();
     }
 
     fn build_server_action_row(&self, server: &str) -> adw::ActionRow {
@@ -778,17 +893,17 @@ impl NtfyrWindow {
         });
         menu_box.append(&add_topic_btn);
 
-        // Add Account Item
-        let add_account_btn = create_menu_row(&gettext("Add Account"), "contact-new-symbolic");
+        // Add/edit account item
+        let account_btn = create_menu_row(&gettext("Account"), "contact-new-symbolic");
         let server_clone = server.to_string();
         let popover_clone = popover.clone();
-            add_account_btn.connect_clicked(move |btn| {
-                popover_clone.popdown();
-                if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
-                    window.on_add_account_clicked(&server_clone);
-                }
-            });
-        menu_box.append(&add_account_btn);
+        account_btn.connect_clicked(move |btn| {
+            popover_clone.popdown();
+            if let Some(window) = btn.root().and_downcast::<NtfyrWindow>() {
+                window.on_account_clicked(&server_clone);
+            }
+        });
+        menu_box.append(&account_btn);
 
         // Remove Server Item (only custom)
         if server != "https://ntfy.sh" {
@@ -831,7 +946,6 @@ impl NtfyrWindow {
         // Adw.ActionRow { subtitle, icon-name, selectable: false }
         let action_row = adw::ActionRow::builder()
             .subtitle(&gettext("no topics added"))
-            .icon_name("mail-mark-important-symbolic")
             .selectable(false)
             .build();
         unsafe { action_row.set_data("placeholder", true); }
@@ -904,12 +1018,19 @@ impl NtfyrWindow {
                     let b = obj.downcast_ref::<glib::BoxedAnyObject>().unwrap();
                     let msg = b.borrow::<models::ReceivedMessage>();
                     let id = msg.id.clone();
+                    let unseen = msg.time > sub_for_rows.imp().read_until.get();
                     let sub = sub_for_rows.clone();
+                    let seen_sub = sub_for_rows.clone();
+                    let seen_time = msg.time;
                     let this = this.clone();
-                    MessageRow::new(msg.clone(), move || {
+                    let seen_this = this.clone();
+                    MessageRow::new(msg.clone(), unseen, move || {
                         let sub = sub.clone();
                         let id = id.clone();
                         this.error_boundary().spawn(async move { sub.delete_message(id).await });
+                    }, move || {
+                        let sub = seen_sub.clone();
+                        seen_this.error_boundary().spawn(async move { sub.mark_message_seen(seen_time).await });
                     })
                     .upcast()
                 });
@@ -933,6 +1054,9 @@ impl NtfyrWindow {
         }
     }
     fn flag_read(&self) {
+        if self.imp().suppress_auto_read.replace(false) {
+            return;
+        }
         let vadj = self.imp().message_scroll.vadjustment();
         // There is nothing to scroll, so the user viewed all the messages
         if vadj.page_size() == vadj.upper()
@@ -1009,6 +1133,19 @@ impl NtfyrWindow {
         let badge = gtk::Label::new(None);
         badge.set_valign(gtk::Align::Center);
         badge.set_margin_start(5);
+        badge.add_css_class("unread-badge");
+        let accent_settings = gio::Settings::new(APP_ID);
+        if accent_settings.boolean("follow-accent-color") {
+            badge.add_css_class("follow-accent");
+        }
+        let badge_for_settings = badge.clone();
+        accent_settings.connect_changed(Some("follow-accent-color"), move |settings, _| {
+            if settings.boolean("follow-accent-color") {
+                badge_for_settings.add_css_class("follow-accent");
+            } else {
+                badge_for_settings.remove_css_class("follow-accent");
+            }
+        });
         badge.set_visible(false);
         let badge_clone = badge.clone();
         sub.connect_unread_count_notify(move |sub| {
@@ -1166,6 +1303,37 @@ impl NtfyrWindow {
         });
     }
 
+    pub fn on_account_clicked(&self, server: &str) {
+        let dialog = NtfyrAccountDialog::new(server.to_string());
+        let this = self.clone();
+        let server_name = server.to_string();
+        let dialog_for_load = dialog.clone();
+        self.error_boundary().spawn(async move {
+            if let Ok(accounts) = this.notifier().list_accounts().await {
+                if let Some(account) = accounts.into_iter().find(|account| account.server == server_name) {
+                    dialog_for_load.set_account(&account);
+                }
+            }
+            dialog_for_load.present(Some(&this));
+            Ok::<_, anyhow::Error>(())
+        });
+
+        let this = self.clone();
+        dialog.connect_closure(
+            "save",
+            false,
+            glib::closure_local!(move |dialog: NtfyrAccountDialog| {
+                let (server, username, password) = dialog.account_data();
+                let this = this.clone();
+                this.error_boundary().spawn(async move {
+                    this.notifier().add_account(&server, &username, &password).await?;
+                    this.imp().toast_overlay.add_toast(adw::Toast::new(&gettext("Account updated successfully")));
+                    Ok::<_, anyhow::Error>(())
+                });
+            }),
+        );
+    }
+
     pub fn on_add_account_clicked(&self, server: &str) {
         let dialog = NtfyrAccountDialog::new(server.to_string());
         dialog.present(Some(self));
@@ -1311,4 +1479,3 @@ impl NtfyrWindow {
     }
 
 }
-

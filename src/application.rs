@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use futures::stream::Stream;
+use futures::{stream::Stream, StreamExt};
 use gtk::{gdk, gio, glib};
 use ntfy_daemon::models;
 use ntfy_daemon::NtfyHandle;
@@ -13,7 +13,7 @@ use tracing::{debug, error, info, warn};
 use gettextrs::gettext;
 
 use crate::config::{APP_ID, PKGDATADIR, PROFILE, RELEASE_VERSION, VERSION};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
 use crate::tray;
 
 // Unlock feature
@@ -299,6 +299,23 @@ impl NtfyrApplication {
             })
             .build();
 
+        let action_notification_open = gio::ActionEntry::builder("notification-open")
+            .parameter_type(Some(&glib::VariantTy::STRING))
+            .activate(|app: &Self, _, params| {
+                if let Some(source) = params.and_then(|p| p.str()) {
+                    app.handle_portal_action(source);
+                }
+            })
+            .build();
+        let action_notification_dismiss = gio::ActionEntry::builder("notification-dismiss")
+            .parameter_type(Some(&glib::VariantTy::STRING))
+            .activate(|app: &Self, _, params| {
+                if let Some(source) = params.and_then(|p| p.str()) {
+                    app.handle_portal_action(source);
+                }
+            })
+            .build();
+
         let action_purge_default = gio::ActionEntry::builder("purge-default-server")
             .activate(|app: &Self, _, _| {
                 if let Some(win) = app.imp().window.borrow().upgrade() {
@@ -313,9 +330,11 @@ impl NtfyrApplication {
             action_shortcuts,
             action_preferences,
             message_action,
+            action_notification_open,
+            action_notification_dismiss,
             action_purge_default,
         ]);
-        
+
         let action_toggle_window = gio::ActionEntry::builder("toggle-window")
             .activate(move |app: &Self, _, _| {
                 if let Some(win) = app.imp().window.borrow().upgrade() {
@@ -415,7 +434,7 @@ impl NtfyrApplication {
             Some(RELEASE_VERSION),
         );
         dialog.set_version(VERSION);
-        
+
         dialog.add_link(&gettext("Support Questions"), "https://github.com/tobagin/Ntfyr/discussions");
 
         // "Name https://…" makes the name a clickable link in the Credits page.
@@ -437,7 +456,7 @@ impl NtfyrApplication {
                 "gettext-rs https://github.com/gettext-rs/gettext-rs",
             ],
         );
-        
+
         dialog.set_copyright(&gettext("© 2019-2026 The Ntfyr Team"));
         dialog.set_license_type(gtk::License::Gpl30);
 
@@ -467,7 +486,7 @@ impl NtfyrApplication {
 
         glib::ExitCode::from(self.run_with_args(&std::env::args().collect::<Vec<_>>()))
     }
-    
+
 
 
 
@@ -486,19 +505,49 @@ impl NtfyrApplication {
 
         // Set status for GNOME Background Apps
         // Currently ashpd doesn't expose SetStatus directly on Background proxy helper easily?
-        // Actually it might not be needed if RequestBackground works. 
+        // Actually it might not be needed if RequestBackground works.
         // Karere doesn't seem to set status in the snippet I saw?
-        // But Ntfyr did. 
+        // But Ntfyr did.
         // We can use zbus for status if needed, or rely on Background portal.
         // Let's stick to what ashpd provides. If SetStatus is needed we can add it later.
-        // However, ashpd 0.12 might implicitly handle things? 
+        // However, ashpd 0.12 might implicitly handle things?
         // Let's check if we can set status via ashpd or if we should just drop it for now (Karere doesn't seem to use it in the snippet).
         // Actually, if we look at Karere usage, it just calls `request()`.
-        
+
         Ok(())
     }
 
-
+    fn handle_portal_action(&self, action: &str) {
+        #[derive(serde::Deserialize)]
+        struct PortalAction { kind: String, server: String, topic: String, message_time: u64 }
+        let Ok(action) = serde_json::from_str::<PortalAction>(action) else {
+            warn!("invalid notification action");
+            return;
+        };
+        if action.kind == "open" {
+            self.ensure_window_present();
+            if let Some(window) = self.imp().window.borrow().upgrade() {
+                window.open_notification(&action.server, &action.topic);
+            }
+            return;
+        }
+        if action.kind != "dismiss" { return; }
+        if let Some(window) = self.imp().window.borrow().upgrade() {
+            window.dismiss_notification(action.server, action.topic, action.message_time);
+        } else if let Some(ntfy) = self.imp().ntfy.get().cloned() {
+            glib::MainContext::default().spawn_local(async move {
+                if let Ok(subs) = ntfy.list_subscriptions().await {
+                    for sub in subs {
+                        let model = sub.model().await;
+                        if model.server == action.server && model.topic == action.topic {
+                            let _ = sub.update_read_until(action.message_time).await;
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+    }
 
     fn ensure_rpc_running(&self) {
         let dbpath = glib::user_data_dir().join("io.github.tobagin.Ntfyr.sqlite");
@@ -513,12 +562,15 @@ impl NtfyrApplication {
         let (s, r) = async_channel::unbounded::<models::Notification>();
 
         let (ui_tx, ui_rx) = async_channel::unbounded::<()>();
+        let (action_tx, action_rx) = async_channel::unbounded::<String>();
 
         let app_weak = self.downgrade();
         glib::MainContext::default().spawn_local(async move {
-            while let Ok(_) = ui_rx.recv().await {
-                if let Some(app) = app_weak.upgrade() {
-                    app.set_unread(true);
+            loop {
+                tokio::select! {
+                    Ok(_) = ui_rx.recv() => if let Some(app) = app_weak.upgrade() { app.set_unread(true); },
+                    Ok(action) = action_rx.recv() => if let Some(app) = app_weak.upgrade() { app.handle_portal_action(&action); },
+                    else => break,
                 }
             }
         });
@@ -533,6 +585,27 @@ impl NtfyrApplication {
                 }
             };
 
+            let action_tx_listener = action_tx.clone();
+            let notification_sources = Arc::new(Mutex::new(std::collections::HashMap::<String, String>::new()));
+            let notification_sources_listener = notification_sources.clone();
+            crate::async_utils::RUNTIME.spawn(async move {
+                if let Ok(action_proxy) = ashpd::desktop::notification::NotificationProxy::new().await {
+                    if let Ok(mut actions) = action_proxy.receive_action_invoked().await {
+                        while let Some(action) = actions.next().await {
+                            if action.name() == "ntfyr-open" || action.name() == "ntfyr-dismiss" {
+                                let source = notification_sources_listener.lock().unwrap().get(action.id()).cloned();
+                                if let Some(source) = source {
+                                    let kind = if action.name() == "ntfyr-open" { "open" } else { "dismiss" };
+                                    let mut payload: serde_json::Value = serde_json::from_str(&source).unwrap_or_default();
+                                    payload["kind"] = serde_json::Value::String(kind.to_string());
+                                    let _ = action_tx_listener.send(payload.to_string()).await;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
             let mut notification_counter = 0u32;
             while let Ok(n) = r.recv().await {
                 let notification_id = if let Some(id) = n.portal_id.clone() {
@@ -545,8 +618,28 @@ impl NtfyrApplication {
                 // Build portal notification
                 let mut portal_notif = ashpd::desktop::notification::Notification::new(&n.title);
                 portal_notif = portal_notif.body(n.body.as_str());
-                
-                // Add action buttons
+
+                // Exported app actions avoid the portal's default notification activation.
+                let source = |kind: &str| serde_json::json!({ "kind": kind, "server": &n.server, "topic": &n.topic, "message_time": n.message_time, "message_id": &n.message_id }).to_string();
+                let open_source = source("open");
+                let dismiss_source = source("dismiss");
+
+                portal_notif = portal_notif.button(
+                    ashpd::desktop::notification::Button::new(
+                        &gettext("Open app"),
+                        "app.notification-open",
+                    )
+                        .target(open_source.as_str()),
+                );
+                portal_notif = portal_notif.button(
+                    ashpd::desktop::notification::Button::new(
+                        &gettext("Dismiss"),
+                        "app.notification-dismiss",
+                    )
+                        .target(dismiss_source.as_str()),
+                );
+
+                // Preserve any actions supplied by ntfy.
                 for a in n.actions.iter() {
                     match a {
                         models::Action::View { label, .. } | models::Action::Http { label, .. } => {
@@ -606,7 +699,7 @@ impl NtfyrApplication {
         let ntfy = self.imp().ntfy.get().unwrap();
 
         let window = NtfyrWindow::new(self, ntfy.clone());
-        
+
         let visible = self.imp().tray_visible.clone();
         let app = self.clone();
         window.connect_notify_local(Some("visible"), move |win, _| {
@@ -619,7 +712,7 @@ impl NtfyrApplication {
         });
         // Sync initial state
         self.imp().tray_visible.store(window.is_visible(), Ordering::Relaxed);
-        
+
         *self.imp().window.borrow_mut() = window.downgrade();
     }
     fn set_unread(&self, unread: bool) {

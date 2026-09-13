@@ -18,8 +18,12 @@
       <summary>Run on startup</summary>
     </key>
     <key name="sort-descending" type="b">
-      <default>false</default>
+      <default>true</default>
       <summary>Sort messages by descending date</summary>
+    </key>
+    <key name="follow-accent-color" type="b">
+      <default>true</default>
+      <summary>Use the system accent color for notification highlights</summary>
     </key>
     <key name="datetime-format" type="s">
       <default>'%Y-%m-%d %H:%M:%S'</default>

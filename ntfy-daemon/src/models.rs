@@ -454,8 +454,13 @@ pub struct Notification {
     pub title: String,
     pub body: String,
     pub actions: Vec<Action>,
-    /// Stable id for desktop [`NotificationProxy`] (portal): one slot per subscription so new
-    /// messages replace the previous portal notification instead of growing shell badge counters.
+    /// Subscription and message identity used by desktop notification actions.
+    pub server: String,
+    pub topic: String,
+    pub message_time: u64,
+    pub message_id: String,
+    /// Unique id for desktop [`NotificationProxy`] (portal), allowing each message to remain
+    /// visible while the desktop groups notifications from this application.
     pub portal_id: Option<String>,
 }
 

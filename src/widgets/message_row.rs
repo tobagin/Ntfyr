@@ -1,5 +1,8 @@
 
 
+use std::net::{IpAddr, ToSocketAddrs};
+use std::rc::Rc;
+
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 
@@ -32,16 +35,96 @@ mod imp {
     impl GridImpl for MessageRow {}
 }
 
+fn themed_notification_icon(unseen: bool) -> &'static str {
+    let Some(display) = gdk::Display::default() else {
+        return "dialog-information-symbolic";
+    };
+    let theme = gtk::IconTheme::for_display(&display);
+    let candidates: &[&str] = if unseen {
+        &["alarm-symbolic", "preferences-system-notifications-symbolic", "notification-symbolic", "dialog-information-symbolic"]
+    } else {
+        &["notifications-disabled-symbolic", "preferences-system-notifications-symbolic", "dialog-information-symbolic"]
+    };
+    candidates.iter().copied().find(|name| theme.has_icon(name)).unwrap_or("dialog-information-symbolic")
+}
+
+fn markdown_image_urls(markdown: &str) -> Vec<String> {
+    let mut urls = Vec::new();
+    let mut rest = markdown;
+    while let Some(start) = rest.find("![") {
+        let Some(open) = rest[start..].find("](") else { break };
+        let url_start = start + open + 2;
+        let Some(end) = rest[url_start..].find(')') else { break };
+        let url = &rest[url_start..url_start + end];
+        if url.starts_with("http://") || url.starts_with("https://") {
+            urls.push(url.to_string());
+        }
+        rest = &rest[url_start + end + 1..];
+    }
+    urls
+}
+
+fn is_blocked_image_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ip) => {
+            ip.is_private()
+                || ip.is_loopback()
+                || ip.is_link_local()
+                || ip.is_unspecified()
+                || ip.is_multicast()
+                || ip.is_broadcast()
+        }
+        IpAddr::V6(ip) => {
+            let segments = ip.segments();
+            let is_link_local = segments[0] & 0xffc0 == 0xfe80;
+            let is_unique_local = segments[0] & 0xfe00 == 0xfc00;
+            let mapped_v4 = ip.to_ipv4_mapped();
+
+            ip.is_loopback()
+                || ip.is_unspecified()
+                || ip.is_multicast()
+                || is_link_local
+                || is_unique_local
+                || mapped_v4.is_some_and(|ip| is_blocked_image_ip(IpAddr::V4(ip)))
+        }
+    }
+}
+
+fn validate_image_url(raw_url: &str) -> anyhow::Result<()> {
+    let url = url::Url::parse(raw_url)?;
+    if !matches!(url.scheme(), "http" | "https") {
+        anyhow::bail!("unsupported image URL scheme");
+    }
+    let host = url
+        .host_str()
+        .ok_or_else(|| anyhow::anyhow!("image URL has no host"))?;
+    let port = url
+        .port_or_known_default()
+        .ok_or_else(|| anyhow::anyhow!("image URL has no port"))?;
+    let addresses: Vec<_> = (host, port).to_socket_addrs()?.collect();
+    if addresses.is_empty() || addresses.iter().any(|address| is_blocked_image_ip(address.ip())) {
+        anyhow::bail!("image URL resolves to a blocked address");
+    }
+    Ok(())
+}
+
 fn markdown_to_pango(markdown: &str) -> String {
     let parser = Parser::new(markdown);
     let mut pango = String::new();
 
     for event in parser {
         match event {
+            Event::Start(Tag::Paragraph) => {
+                if !pango.is_empty() { pango.push('\n'); }
+            }
+            Event::Start(Tag::Heading { .. }) => pango.push_str("<b>"),
+            Event::End(TagEnd::Heading(_)) => pango.push_str("</b>\n"),
             Event::Start(Tag::Strong) => pango.push_str("<b>"),
             Event::End(TagEnd::Strong) => pango.push_str("</b>"),
             Event::Start(Tag::Emphasis) => pango.push_str("<i>"),
             Event::End(TagEnd::Emphasis) => pango.push_str("</i>"),
+            Event::Start(Tag::Strikethrough) => pango.push_str("<s>"),
+            Event::End(TagEnd::Strikethrough) => pango.push_str("</s>"),
             Event::Start(Tag::Link { dest_url, .. }) => {
                 pango.push_str(&format!(
                     "<a href=\"{}\">",
@@ -49,6 +132,12 @@ fn markdown_to_pango(markdown: &str) -> String {
                 ));
             }
             Event::End(TagEnd::Link) => pango.push_str("</a>"),
+            Event::Start(Tag::List(_)) => {}
+            Event::End(TagEnd::List(_)) => pango.push('\n'),
+            Event::Start(Tag::Item) => pango.push_str("• "),
+            Event::End(TagEnd::Item) => pango.push('\n'),
+            Event::Start(Tag::BlockQuote(_)) => pango.push_str("<i>│ "),
+            Event::End(TagEnd::BlockQuote(_)) => pango.push_str("</i>\n"),
             Event::Start(Tag::CodeBlock(_)) => pango.push_str("<tt>"),
             Event::End(TagEnd::CodeBlock) => pango.push_str("</tt>\n"),
             Event::Code(code) => {
@@ -72,28 +161,53 @@ glib::wrapper! {
 }
 
 impl MessageRow {
-    pub fn new(msg: models::ReceivedMessage, on_delete: impl Fn() + 'static) -> Self {
+    pub fn new(msg: models::ReceivedMessage, unseen: bool, on_delete: impl Fn() + 'static, on_seen: impl Fn() + 'static) -> Self {
         let this: Self = glib::Object::new();
-        this.build_ui(msg, on_delete);
+        this.build_ui(msg, unseen, on_delete, on_seen);
         this
     }
-    fn build_ui(&self, msg: models::ReceivedMessage, on_delete: impl Fn() + 'static) {
+    fn build_ui(&self, msg: models::ReceivedMessage, unseen: bool, on_delete: impl Fn() + 'static, on_seen: impl Fn() + 'static) {
         self.set_margin_top(8);
         self.set_margin_bottom(8);
-        self.set_margin_start(8);
-        self.set_margin_end(8);
+        self.set_margin_start(12);
+        self.set_margin_end(12);
+        self.add_css_class("message-card");
+        if unseen {
+            self.add_css_class("message-unseen");
+        }
+        let settings = gio::Settings::new(APP_ID);
+        if settings.boolean("follow-accent-color") {
+            self.add_css_class("follow-accent");
+        }
+        let row_for_settings = self.clone();
+        settings.connect_changed(Some("follow-accent-color"), move |settings, _| {
+            if settings.boolean("follow-accent-color") {
+                row_for_settings.add_css_class("follow-accent");
+            } else {
+                row_for_settings.remove_css_class("follow-accent");
+            }
+        });
+        self.set_hexpand(true);
+        self.set_can_target(true);
         self.set_column_spacing(8);
         self.set_row_spacing(8);
+        let on_seen: Rc<dyn Fn()> = Rc::new(on_seen);
+        let seen_row = self.clone();
+        let seen_gesture = gtk::GestureClick::new();
+        seen_gesture.connect_pressed(move |_, _, _, _| {
+            seen_row.remove_css_class("message-unseen");
+            (on_seen)();
+        });
+        self.add_controller(seen_gesture);
         let mut row = 0;
 
-        let fmt = gio::Settings::new(APP_ID).string("datetime-format");
+        let datetime_format = settings.string("datetime-format");
         let time = gtk::Label::builder()
             .label(
                 &chrono::DateTime::from_timestamp(msg.time as i64, 0)
                     .map(|time| {
-                        time.with_timezone(&chrono::Local)
-                            .format(fmt.as_str())
-                            .to_string()
+                        let time = time.with_timezone(&chrono::Local);
+                        time.format(datetime_format.as_str()).to_string()
                     })
                     .unwrap_or_default(),
             )
@@ -112,7 +226,13 @@ impl MessageRow {
             edited.set_valign(gtk::Align::Center);
             time_box.append(&edited);
         }
-        self.attach(&time_box, 0, row, 1, 1);
+        time_box.add_css_class("message-footer-date");
+        time_box.set_halign(gtk::Align::Start);
+        time_box.set_valign(gtk::Align::End);
+        let header_actions = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+        header_actions.set_halign(gtk::Align::End);
+        header_actions.set_valign(gtk::Align::End);
+        header_actions.set_margin_end(8);
 
         if let Some(p) = msg.priority {
             let level = match p {
@@ -124,29 +244,29 @@ impl MessageRow {
                 _ => gettext("Invalid"),
             };
             let text = gettext("Priority: {}").replacen("{}", &level, 1);
-            let priority = gtk::Label::builder().label(&text).xalign(0.0).build();
+            let priority = gtk::Label::builder().label(&text).build();
             priority.add_css_class("caption");
-            priority.add_css_class("chip");
-            if p == 5 {
-                priority.add_css_class("chip--danger")
-            } else if p == 4 {
-                priority.add_css_class("chip--warning")
-            }
-            priority.set_halign(gtk::Align::End);
-            self.attach(&priority, 1, 0, 1, 1);
+            priority.add_css_class("priority-badge");
+            priority.add_css_class(&format!("priority-{}", p.clamp(1, 5)));
+            self.add_css_class(&format!("message-priority-{}", p.clamp(1, 5)));
+            time_box.append(&priority);
         }
+
+        let icon_name = themed_notification_icon(unseen);
+        let unseen_icon = gtk::Image::from_icon_name(icon_name);
+        let unseen_tooltip = if unseen { gettext("Unread notification") } else { gettext("Seen notification") };
+        unseen_icon.set_tooltip_text(Some(&unseen_tooltip));
+        unseen_icon.add_css_class("unseen-indicator");
+        unseen_icon.set_opacity(if unseen { 1.0 } else { 0.35 });
+        header_actions.append(&unseen_icon);
 
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
-            .valign(gtk::Align::Start)
-            .halign(gtk::Align::End)
             .tooltip_text(gettext("Delete notification"))
             .css_classes(vec!["flat", "circular"])
             .build();
         delete_btn.connect_clicked(move |_| on_delete());
-        self.attach(&delete_btn, 2, 0, 1, 1);
-        row += 1;
-
+        header_actions.append(&delete_btn);
         if let Some(title) = msg.display_title() {
             let label = gtk::Label::builder()
                 .label(&title)
@@ -156,7 +276,8 @@ impl MessageRow {
                 .selectable(true)
                 .build();
             label.add_css_class("heading");
-            self.attach(&label, 0, row, 3, 1);
+            label.add_css_class("message-title");
+            self.attach(&label, 0, row, 4, 1);
             row += 1;
         }
 
@@ -168,19 +289,26 @@ impl MessageRow {
                 .selectable(true)
                 .hexpand(true)
                 .build();
+            label.add_css_class("message-body");
             if msg.is_markdown() {
                 label.set_use_markup(true);
                 label.set_markup(&markdown_to_pango(&message));
             } else {
                 label.set_label(&message);
             }
-            self.attach(&label, 0, row, 3, 1);
+            self.attach(&label, 0, row, 4, 1);
             row += 1;
+
+            // Markdown image syntax is rendered below the text as a real GTK picture.
+            for url in markdown_image_urls(&message) {
+                self.attach(&self.build_image(url), 0, row, 4, 1);
+                row += 1;
+            }
         }
 
         if let Some(attachment) = msg.attachment {
             if attachment.is_image() {
-                self.attach(&self.build_image(attachment.url.to_string()), 0, row, 3, 1);
+                self.attach(&self.build_image(attachment.url.to_string()), 0, row, 4, 1);
                 row += 1;
             }
         }
@@ -189,16 +317,17 @@ impl MessageRow {
             let action_btns = gtk::FlowBox::builder()
                 .row_spacing(8)
                 .column_spacing(8)
-                .homogeneous(true)
+                .homogeneous(false)
                 .selection_mode(gtk::SelectionMode::None)
                 .build();
 
             for a in msg.actions {
                 let btn = self.build_action_btn(a);
+                btn.add_css_class("pill");
                 action_btns.insert(&btn, -1);
             }
 
-            self.attach(&action_btns, 0, row, 3, 1);
+            self.attach(&action_btns, 0, row, 4, 1);
             row += 1;
         }
         if msg.tags.len() > 0 {
@@ -210,15 +339,27 @@ impl MessageRow {
                 .wrap(true)
                 .wrap_mode(gtk::pango::WrapMode::WordChar)
                 .build();
-            self.attach(&tags, 0, row, 3, 1);
+            self.attach(&tags, 0, row, 4, 1);
+            row += 1;
         }
+
+        // Footer: date on the left, badge and actions on the right.
+        self.attach(&time_box, 0, row, 1, 1);
+        self.attach(&header_actions, 1, row, 3, 1);
     }
+
     fn fetch_image_bytes(url: &str) -> anyhow::Result<Vec<u8>> {
+        validate_image_url(url)?;
         let path = glib::user_cache_dir().join("io.github.tobagin.Ntfyr").join(&url);
         let bytes = if path.exists() {
             std::fs::read(&path)?
         } else {
-            ureq::get(url)
+            let agent: ureq::Agent = ureq::Agent::config_builder()
+                .max_redirects(0)
+                .build()
+                .into();
+            agent
+                .get(url)
                 .call()?
                 .into_body()
                 .read_to_vec()?
@@ -241,7 +382,10 @@ impl MessageRow {
         });
         let picture = gtk::Picture::new();
         picture.set_can_shrink(true);
-        picture.set_height_request(350);
+        picture.set_content_fit(gtk::ContentFit::Contain);
+        picture.set_halign(gtk::Align::Fill);
+        picture.set_height_request(280);
+        picture.add_css_class("message-image");
         let picturec = picture.clone();
 
         self.error_boundary().spawn(async move {

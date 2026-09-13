@@ -266,7 +266,7 @@ impl Db {
         let conn = self.conn.read().unwrap();
         let res = conn.execute(
             "UPDATE subscription
-            SET read_until = ?3
+            SET read_until = MAX(read_until, ?3)
             WHERE topic = ?2 AND server = ?1
             ",
             params![server_id, topic, value as i64],
@@ -378,6 +378,23 @@ mod tests {
         assert_eq!(sub.read_until, read_until);
         assert_eq!(sub.listen_since, 0);
         assert_eq!(since, 0);
+    }
+
+    #[test]
+    fn read_until_updates_are_monotonic() {
+        let mut db = Db::connect(":memory:").unwrap();
+        let sub = models::Subscription::builder("alerts".into())
+            .server("https://ntfy.example".into())
+            .read_until(100)
+            .build()
+            .unwrap();
+        db.insert_subscription(sub.clone()).unwrap();
+
+        db.update_read_until(&sub.server, &sub.topic, 200).unwrap();
+        db.update_read_until(&sub.server, &sub.topic, 150).unwrap();
+
+        let stored = db.list_subscriptions().unwrap().pop().unwrap();
+        assert_eq!(stored.read_until, 200);
     }
 
     fn update_message_json(topic: &str, id: &str, seq: &str, time: u64) -> String {

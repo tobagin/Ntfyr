@@ -54,6 +54,193 @@ button.small {
   border: 1px solid @borders;
 }
 
+.message-card {
+  padding: 14px;
+  border-radius: 16px;
+  background-color: @card_bg_color;
+  border: 1px solid alpha(@borders, 0.55);
+  box-shadow: 0 2px 8px alpha(@theme_fg_color, 0.12);
+}
+
+.message-list > row:hover {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.navigation-sidebar > row {
+  margin-bottom: 5px;
+}
+
+.unread-badge {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background-color: alpha(@theme_fg_color, 0.12);
+  color: @theme_fg_color;
+  font-weight: 700;
+}
+
+.unread-badge.follow-accent {
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+.navigation-sidebar > row:last-child {
+  margin-bottom: 0;
+}
+
+.message-card:hover,
+.message-list > row:hover .message-card {
+  background-color: alpha(@theme_fg_color, 0.10);
+}
+
+.message-unseen {
+  background-color: alpha(@blue_2, 0.10);
+  border: 1px solid alpha(@blue_3, 0.35);
+}
+
+.follow-accent.message-unseen {
+  background-color: alpha(@accent_bg_color, 0.12);
+  border-color: alpha(@accent_bg_color, 0.45);
+}
+
+.message-unseen .unseen-indicator {
+  color: @blue_3;
+}
+
+.follow-accent.message-unseen .unseen-indicator {
+  color: @accent_bg_color;
+}
+
+.unseen-indicator {
+  margin-top: 2px;
+}
+
+.message-title {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.message-body {
+  color: @card_fg_color;
+}
+
+.message-footer-date {
+  padding: 4px;
+  border-radius: 8px;
+  background-color: alpha(@theme_fg_color, 0.08);
+}
+
+.priority-badge {
+  min-height: 22px;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.priority-badge.priority-4 {
+  background-color: alpha(@yellow_2, 0.55);
+}
+
+.priority-badge.priority-5 {
+  background-color: alpha(@red_2, 0.65);
+}
+
+.priority-badge.priority-1 {
+  background-color: alpha(@theme_fg_color, 0.10);
+}
+
+.priority-badge.priority-2 {
+  background-color: alpha(@blue_3, 0.18);
+}
+
+.priority-badge.priority-3 {
+  background-color: alpha(@yellow_3, 0.22);
+}
+
+.message-priority-1 {
+  border-left: 3px solid alpha(@theme_fg_color, 0.18);
+}
+
+.message-priority-2 {
+  border-left: 3px solid alpha(@blue_3, 0.55);
+}
+
+.message-priority-3 {
+  border-left: 4px solid alpha(@yellow_3, 0.70);
+  background-color: alpha(@yellow_1, 0.06);
+}
+
+.message-priority-4 {
+  border-left: 5px solid @yellow_5;
+  background-color: alpha(@yellow_2, 0.12);
+}
+
+.message-priority-5 {
+  border-left: 6px solid @red_5;
+  background-color: alpha(@red_2, 0.18);
+}
+
+.follow-accent .priority-badge.priority-1 {
+  background-color: alpha(@accent_bg_color, 0.10);
+}
+
+.follow-accent .priority-badge.priority-2 {
+  background-color: alpha(@accent_bg_color, 0.18);
+}
+
+.follow-accent .priority-badge.priority-3 {
+  background-color: alpha(@accent_bg_color, 0.28);
+}
+
+.follow-accent .priority-badge.priority-4 {
+  background-color: alpha(@accent_bg_color, 0.42);
+}
+
+.follow-accent .priority-badge.priority-5 {
+  background-color: alpha(@accent_bg_color, 0.58);
+}
+
+.follow-accent.message-priority-2 {
+  border-left-color: alpha(@accent_bg_color, 0.55);
+}
+
+.follow-accent.message-priority-3 {
+  border-left-color: alpha(@accent_bg_color, 0.70);
+  background-color: alpha(@accent_bg_color, 0.06);
+}
+
+.follow-accent.message-priority-4 {
+  border-left-color: alpha(@accent_bg_color, 0.85);
+  background-color: alpha(@accent_bg_color, 0.12);
+}
+
+.follow-accent.message-priority-5 {
+  border-left-color: @accent_bg_color;
+  background-color: alpha(@accent_bg_color, 0.18);
+}
+
+.message-priority-4.message-unseen,
+.message-priority-5.message-unseen {
+  box-shadow: 0 0 0 1px alpha(@accent_bg_color, 0.5);
+}
+
+.message-image {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background-color: alpha(@theme_fg_color, 0.06);
+}
+
+.message-card button.pill {
+  min-height: 34px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
 .message_bar {
   padding: 2px 2px;
   background-color: @sidebar_bg_color;

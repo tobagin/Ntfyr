@@ -349,6 +349,40 @@ impl Subscription {
             Ok(())
         }
     }
+    pub async fn mark_message_seen(&self, timestamp: u64) -> anyhow::Result<()> {
+        let current = self.imp().read_until.get();
+        if timestamp > current {
+            self.imp()
+                .client
+                .get()
+                .unwrap()
+                .update_read_until(timestamp)
+                .await?;
+            self.imp()
+                .read_until
+                .set(self.imp().read_until.get().max(timestamp));
+            self.update_unread_count();
+        }
+        Ok(())
+    }
+
+    pub async fn dismiss_message(&self, timestamp: u64) -> anyhow::Result<()> {
+        let current = self.imp().read_until.get();
+        if timestamp > current {
+            self.imp()
+                .client
+                .get()
+                .unwrap()
+                .update_read_until(timestamp)
+                .await?;
+            self.imp()
+                .read_until
+                .set(self.imp().read_until.get().max(timestamp));
+            self.update_unread_count();
+        }
+        Ok(())
+    }
+
     pub async fn flag_all_as_read(&self) -> anyhow::Result<()> {
         let imp = self.imp();
         let Some(value) = Self::last_message(&imp.messages)

@@ -18,6 +18,8 @@ mod imp {
         #[template_child]
         pub sort_descending_switch: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub follow_accent_color_switch: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub startup_background_switch: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub app_lock_switch: TemplateChild<adw::SwitchRow>,
@@ -41,6 +43,7 @@ mod imp {
             Self {
                 startup_switch: Default::default(),
                 sort_descending_switch: Default::default(),
+                follow_accent_color_switch: Default::default(),
                 startup_background_switch: Default::default(),
                 app_lock_switch: Default::default(),
                 auto_lock_switch: Default::default(),
@@ -162,6 +165,9 @@ impl NtfyrPreferences {
         });
         settings
             .bind("sort-descending", &*obj.imp().sort_descending_switch, "active")
+            .build();
+        settings
+            .bind("follow-accent-color", &*obj.imp().follow_accent_color_switch, "active")
             .build();
 
         // Datetime format combo
