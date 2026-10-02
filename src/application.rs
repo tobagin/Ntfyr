@@ -22,6 +22,78 @@ use std::sync::{
 // Unlock feature
 use crate::widgets::NtfyrWindow;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NtfyDeepLink {
+    server: String,
+    topic: String,
+    display_name: Option<String>,
+}
+
+/// Parse the ntfy Android-style deep-link format documented at
+/// https://docs.ntfy.sh/subscribe/phone/#subscribe-from-your-web-app
+///
+/// Supported forms:
+///   ntfy://host/topic
+///   ntfy://host/topic?display=My+Topic
+///   ntfy://host/topic?secure=false
+fn parse_ntfy_deep_link(value: &str) -> Result<NtfyDeepLink, String> {
+    let parsed = url::Url::parse(value).map_err(|e| format!("invalid ntfy URI: {e}"))?;
+
+    if parsed.scheme() != "ntfy" {
+        return Err("URI scheme must be ntfy".to_string());
+    }
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("credentials are not allowed in ntfy URIs".to_string());
+    }
+    if parsed.fragment().is_some() {
+        return Err("fragments are not supported in ntfy URIs".to_string());
+    }
+
+    let host = match parsed.host() {
+        Some(url::Host::Domain(host)) => host.to_string(),
+        Some(url::Host::Ipv4(host)) => host.to_string(),
+        Some(url::Host::Ipv6(host)) => format!("[{host}]"),
+        None => return Err("ntfy URI is missing a host".to_string()),
+    };
+
+    let segments: Vec<_> = parsed
+        .path_segments()
+        .ok_or_else(|| "ntfy URI is missing a topic".to_string())?
+        .collect();
+    if segments.len() != 1 || segments[0].is_empty() {
+        return Err("ntfy URI must contain exactly one topic".to_string());
+    }
+    let topic = segments[0].to_string();
+    models::validate_topic(&topic).map_err(|_| "ntfy URI contains an invalid topic".to_string())?;
+
+    let mut secure = true;
+    let mut display_name = None;
+    for (key, value) in parsed.query_pairs() {
+        match key.as_ref() {
+            "secure" => {
+                secure = !(value.eq_ignore_ascii_case("false") || value == "0");
+            }
+            "display" if !value.is_empty() => {
+                display_name = Some(value.into_owned());
+            }
+            _ => {}
+        }
+    }
+
+    let scheme = if secure { "https" } else { "http" };
+    let default_port = if secure { 443 } else { 80 };
+    let server = match parsed.port() {
+        Some(port) if port != default_port => format!("{scheme}://{host}:{port}"),
+        _ => format!("{scheme}://{host}"),
+    };
+
+    Ok(NtfyDeepLink {
+        server,
+        topic,
+        display_name,
+    })
+}
+
 /// True if `url` is a plain http(s) URL safe to hand to an external handler.
 /// Rejects non-http schemes (file:, tel:, mailto:, …) that a server-controlled
 /// action could otherwise abuse.
@@ -192,6 +264,12 @@ mod imp {
             debug!("AdwApplication<NtfyrApplication>::command_line");
             let arguments = command_line.arguments();
             let is_daemon = arguments.get(1).map(|x| x.to_str()) == Some(Some("--daemon"));
+            let ntfy_uri = arguments
+                .iter()
+                .skip(1)
+                .filter_map(|arg| arg.to_str())
+                .find(|arg| arg.starts_with("ntfy://"))
+                .map(str::to_owned);
             let app = self.obj();
 
             // Capture whether the primary instance was already running BEFORE we
@@ -208,6 +286,58 @@ mod imp {
             let settings = gio::Settings::new(crate::config::APP_ID);
 
             if is_daemon {
+                return glib::ExitCode::SUCCESS;
+            }
+
+            if let Some(uri) = ntfy_uri {
+                // A deep link is an explicit request to interact with the app, so
+                // always present the window even when start-in-background is set.
+                app.ensure_window_present();
+                match parse_ntfy_deep_link(&uri) {
+                    Ok(link) => {
+                        let parent = app.main_window();
+                        let mut body = format!(
+                            "{} {}\n{} {}",
+                            gettext("Server:"),
+                            link.server,
+                            gettext("Topic:"),
+                            link.topic,
+                        );
+                        if link.server.starts_with("http://") {
+                            body.push_str(&format!(
+                                "\n\n{}",
+                                gettext(
+                                    "Warning: This subscription uses unencrypted HTTP. Credentials and notifications may be exposed in transit."
+                                )
+                            ));
+                        }
+
+                        let dialog = adw::AlertDialog::new(
+                            Some(&gettext("Subscribe to Topic?")),
+                            Some(&body),
+                        );
+                        dialog.add_response("cancel", &gettext("Cancel"));
+                        dialog.add_response("subscribe", &gettext("Subscribe"));
+                        dialog.set_response_appearance(
+                            "subscribe",
+                            adw::ResponseAppearance::Suggested,
+                        );
+                        dialog.set_default_response(Some("cancel"));
+                        dialog.set_close_response("cancel");
+
+                        glib::MainContext::default().spawn_local(async move {
+                            let response = dialog.choose_future(Some(&parent)).await;
+                            if response == "subscribe" {
+                                parent.subscribe_from_deep_link(
+                                    link.server,
+                                    link.topic,
+                                    link.display_name,
+                                );
+                            }
+                        });
+                    }
+                    Err(e) => warn!(uri = %uri, error = %e, "ignoring invalid ntfy deep link"),
+                }
                 return glib::ExitCode::SUCCESS;
             }
 
@@ -653,5 +783,52 @@ impl Default for NtfyrApplication {
             .property("flags", gio::ApplicationFlags::HANDLES_COMMAND_LINE)
             .property("resource-base-path", "/io/github/tobagin/Ntfyr/")
             .build()
+    }
+}
+
+#[cfg(test)]
+mod deep_link_tests {
+    use super::*;
+
+    #[test]
+    fn parses_standard_ntfy_links() {
+        let link = parse_ntfy_deep_link("ntfy://ntfy.sh/mytopic").unwrap();
+        assert_eq!(link.server, "https://ntfy.sh");
+        assert_eq!(link.topic, "mytopic");
+        assert_eq!(link.display_name, None);
+
+        let link = parse_ntfy_deep_link("ntfy://example.com/mytopic?display=My+Topic").unwrap();
+        assert_eq!(link.server, "https://example.com");
+        assert_eq!(link.topic, "mytopic");
+        assert_eq!(link.display_name.as_deref(), Some("My Topic"));
+    }
+
+    #[test]
+    fn parses_ports_and_insecure_links() {
+        let link = parse_ntfy_deep_link("ntfy://example.com:8443/mytopic").unwrap();
+        assert_eq!(link.server, "https://example.com:8443");
+
+        let link = parse_ntfy_deep_link("ntfy://example.com/mytopic?secure=false").unwrap();
+        assert_eq!(link.server, "http://example.com");
+
+        let link = parse_ntfy_deep_link("ntfy://example.com:8080/mytopic?secure=false").unwrap();
+        assert_eq!(link.server, "http://example.com:8080");
+    }
+
+    #[test]
+    fn rejects_invalid_ntfy_links() {
+        for value in [
+            "https://example.com/mytopic",
+            "ntfy:///mytopic",
+            "ntfy://example.com",
+            "ntfy://example.com/a/b",
+            "ntfy://user@example.com/mytopic",
+            "ntfy://example.com/bad%2Ftopic",
+        ] {
+            assert!(
+                parse_ntfy_deep_link(value).is_err(),
+                "expected {value} to be rejected"
+            );
+        }
     }
 }

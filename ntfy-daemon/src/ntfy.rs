@@ -1,21 +1,21 @@
 use crate::actor_utils::send_command;
 use anyhow::anyhow;
-use futures::future::join_all;
 use futures::StreamExt;
+use futures::future::join_all;
 use std::{collections::HashMap, future::Future, sync::Arc};
 use tokio::{
     select,
-    sync::{mpsc, oneshot, RwLock},
+    sync::{RwLock, mpsc, oneshot},
     task::LocalSet,
 };
 use tracing::{error, info};
 
 use crate::{
+    ListenerConfig, ListenerHandle, SharedEnv, SubscriptionHandle,
     credentials::Credential,
     http_client::HttpClient,
     message_repo::Db,
     models::{self, Account},
-    ListenerConfig, ListenerHandle, SharedEnv, SubscriptionHandle,
 };
 
 const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
@@ -34,8 +34,7 @@ pub fn build_client() -> anyhow::Result<reqwest::Client> {
 #[derive()]
 pub enum NtfyCommand {
     Subscribe {
-        server: String,
-        topic: String,
+        subscription: models::Subscription,
         resp_tx: oneshot::Sender<Result<SubscriptionHandle, anyhow::Error>>,
     },
     Unsubscribe {
@@ -120,20 +119,39 @@ impl NtfyActor {
 
     async fn handle_subscribe(
         &self,
-        server: String,
-        topic: String,
+        mut subscription: models::Subscription,
     ) -> Result<SubscriptionHandle, anyhow::Error> {
+        let server = subscription.server.clone();
+        let topic = subscription.topic.clone();
+        let key = WatchKey {
+            server: server.clone(),
+            topic: topic.clone(),
+        };
+
+        // Following the same deep link twice should not create duplicate
+        // listeners or rows. Return the existing handle when already active.
+        if let Some(existing) = self.listener_handles.read().await.get(&key).cloned() {
+            return Ok(existing);
+        }
+
+        // The actor may still be restoring subscriptions from the database when
+        // an application deep link arrives. Treat an existing stored subscription
+        // as authoritative rather than attempting a duplicate INSERT.
+        let mut db = self.env.db.clone();
+        if let Some(existing) = db
+            .list_subscriptions()?
+            .into_iter()
+            .find(|sub| sub.server == server && sub.topic == topic)
+        {
+            return self.listen(existing).await;
+        }
+
         let read_until = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
+        subscription.read_until = read_until;
 
-        let subscription = models::Subscription::builder(topic.clone())
-            .server(server.clone())
-            .read_until(read_until)
-            .build()?;
-
-        let mut db = self.env.db.clone();
         db.insert_subscription(subscription.clone())?;
 
         self.listen(subscription).await
@@ -169,11 +187,10 @@ impl NtfyActor {
     async fn handle_command(&mut self, command: NtfyCommand) {
         match command {
             NtfyCommand::Subscribe {
-                server,
-                topic,
+                subscription,
                 resp_tx,
             } => {
-                let result = self.handle_subscribe(server, topic).await;
+                let result = self.handle_subscribe(subscription).await;
                 let _ = resp_tx.send(result);
             }
 
@@ -355,9 +372,20 @@ impl NtfyHandle {
         server: &str,
         topic: &str,
     ) -> Result<SubscriptionHandle, anyhow::Error> {
+        let subscription = models::Subscription::builder(topic.to_string())
+            .server(server.to_string())
+            .build()?;
+        self.subscribe_model(subscription).await
+    }
+
+    /// Subscribe using a fully-populated subscription model. This preserves
+    /// metadata such as the display name supplied by an ntfy:// deep link.
+    pub async fn subscribe_model(
+        &self,
+        subscription: models::Subscription,
+    ) -> Result<SubscriptionHandle, anyhow::Error> {
         send_command!(self, |resp_tx| NtfyCommand::Subscribe {
-            server: server.to_string(),
-            topic: topic.to_string(),
+            subscription,
             resp_tx,
         })
     }

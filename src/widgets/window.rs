@@ -348,8 +348,16 @@ impl NtfyrWindow {
     fn add_subscription(&self, sub: models::Subscription) {
         let this = self.clone();
         self.error_boundary().spawn(async move {
-            let sub = this.notifier().subscribe(&sub.server, &sub.topic).await?;
+            let sub = this.notifier().subscribe_model(sub).await?;
             let imp = this.imp();
+
+            // subscribe_model() is idempotent. If the topic was already present,
+            // do not add a second row to the UI model.
+            let model = sub.model().await;
+            if this.has_subscription(&model.server, &model.topic) {
+                this.rebuild_subscription_list();
+                return Ok(());
+            }
 
             // Subscription::new will use the pipelined client to retrieve info about the subscription
             let subscription = Subscription::new(sub);
@@ -475,6 +483,19 @@ impl NtfyrWindow {
 
             Ok::<_, anyhow::Error>(())
         });
+    }
+
+    fn has_subscription(&self, server: &str, topic: &str) -> bool {
+        let model = &self.imp().subscription_list_model;
+        for i in 0..model.n_items() {
+            if let Some(sub) = model.item(i).and_downcast::<Subscription>()
+                && sub.server() == server
+                && sub.topic() == topic
+            {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn notifier(&self) -> &NtfyHandle {
@@ -653,6 +674,10 @@ impl NtfyrWindow {
             glib::timeout_future_seconds(1).await;
             let list = this.notifier().list_subscriptions().await?;
             for sub in list {
+                let model = sub.model().await;
+                if this.has_subscription(&model.server, &model.topic) {
+                    continue;
+                }
                 let sub = Subscription::new(sub);
                 this.attach_sort_trigger(&sub);
                 this.imp().subscription_list_model.append(&sub);
@@ -1149,6 +1174,52 @@ impl NtfyrWindow {
             dialog_clone.close();
             None
         });
+    }
+
+    /// Subscribe to a topic received via an ntfy:// deep link.
+    ///
+    /// The URI itself never carries credentials. Existing credentials for the
+    /// server are picked up by the daemon in the same way as a manually-created
+    /// subscription.
+    pub fn subscribe_from_deep_link(
+        &self,
+        server: String,
+        topic: String,
+        display_name: Option<String>,
+    ) {
+        let settings = gio::Settings::new(crate::config::APP_ID);
+
+        // Make sure the target server has a visible section in the sidebar.
+        if server == "https://ntfy.sh" {
+            let _ = settings.set_boolean("show-default-server", true);
+        } else {
+            let mut servers: Vec<String> = settings
+                .strv("custom-servers")
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect();
+            if !servers.contains(&server) {
+                servers.push(server.clone());
+                let _ = settings.set_strv(
+                    "custom-servers",
+                    servers
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .as_slice(),
+                );
+            }
+        }
+
+        let mut builder = models::Subscription::builder(topic).server(server);
+        if let Some(display_name) = display_name {
+            builder = builder.display_name(display_name);
+        }
+
+        match builder.build() {
+            Ok(sub) => self.add_subscription(sub),
+            Err(e) => warn!(error = ?e, "refusing invalid ntfy deep-link subscription"),
+        }
     }
 
     pub fn on_remove_server_clicked(&self, server: &str) {
